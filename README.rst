@@ -5,7 +5,7 @@ Log Assertion
 What?
 -----
 
-A simple Log Assertion mechanism for Python unittests.
+A simple log assertion mechanism for Python unittests.
 
 
 Why?
@@ -13,7 +13,7 @@ Why?
 
 As is vox populi, you must also test the logging calls in your programs.
 
-With ``logassert`` this now is very easy.
+With ``logassert`` this is now very easy.
 
 
 Awesome! How to use it?
@@ -30,12 +30,12 @@ Like::
         def setUp(self):
             logassert.setup(self, 'mylogger')
 
-In the example, ``mylogger`` is the name of the logging to supervise. If 
-different subsystems of your code log in other loggers, this tester 
+In the example, ``mylogger`` is the name of the logging to supervise. If
+different subsystems of your code log in other loggers, this tester
 won't notice.
 
-Then, to use it, just call the ``assertLogged`` method and it's family, 
-passing all the strings you want to find. 
+Then, to use it, just call the ``assertLogged`` method and it's family,
+passing all the strings you want to find.
 
 Example::
 
@@ -43,7 +43,7 @@ Example::
             (...)
             self.assertLoggedDebug('secret', 'life', '42')
 
-That line will check that "secret", "life" and "42" are all logged in the 
+That line will check that "secret", "life" and "42" are all logged in the
 same logging call, in DEBUG level.
 
 So, if you logged this, the test will pass::
@@ -52,7 +52,7 @@ So, if you logged this, the test will pass::
 
 Note that the message checked is the one with all parameters replaced.
 
-But if you logged any of the following, the test will fail (the first because 
+But if you logged any of the following, the test will fail (the first because
 it misses one of the string, the second because it has the wrong log level)::
 
     logger.debug("The secret of life, the universe and everything is lost")
@@ -62,8 +62,7 @@ it misses one of the string, the second because it has the wrong log level)::
 Nice! But...
 ------------
 
-If you need help, or have any question, or found any issue, please open a 
-
-https://github.com/facundobatista/logassert/issues
+If you need help, or have any question, or found any issue, please open a
+ticket `here <https://github.com/facundobatista/logassert/issues/new>`_.
 
 Thanks in advance for your time.
