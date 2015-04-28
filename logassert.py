@@ -27,11 +27,16 @@ class SetupLogChecker(logging.handlers.MemoryHandler):
         # init memory handler to never flush
         super(SetupLogChecker, self).__init__(capacity=100000, flushLevel=1000)
         self.test_instance = test_instance
-        test_instance.assertLogged = self._check_generic
-        test_instance.assertLoggedError = functools.partial(self._check, logging.ERROR)
-        test_instance.assertLoggedWarning = functools.partial(self._check, logging.WARNING)
-        test_instance.assertLoggedInfo = functools.partial(self._check, logging.INFO)
-        test_instance.assertLoggedDebug = functools.partial(self._check, logging.DEBUG)
+        test_instance.assertLogged = self._check_generic_pos
+        test_instance.assertLoggedError = functools.partial(self._check_pos, logging.ERROR)
+        test_instance.assertLoggedWarning = functools.partial(self._check_pos, logging.WARNING)
+        test_instance.assertLoggedInfo = functools.partial(self._check_pos, logging.INFO)
+        test_instance.assertLoggedDebug = functools.partial(self._check_pos, logging.DEBUG)
+        test_instance.assertNotLogged = functools.partial(self._check_neg, None)
+        test_instance.assertNotLoggedError = functools.partial(self._check_neg, logging.ERROR)
+        test_instance.assertNotLoggedWarning = functools.partial(self._check_neg, logging.WARNING)
+        test_instance.assertNotLoggedInfo = functools.partial(self._check_neg, logging.INFO)
+        test_instance.assertNotLoggedDebug = functools.partial(self._check_neg, logging.DEBUG)
 
         # hook in the logger
         logger = logging.getLogger(log_path)
@@ -39,8 +44,8 @@ class SetupLogChecker(logging.handlers.MemoryHandler):
         logger.setLevel(logging.DEBUG)
         self.setLevel(logging.DEBUG)
 
-    def _check_generic(self, *tokens):
-        """Check if the the different tokens were logged in one record, any level."""
+    def _check_generic_pos(self, *tokens):
+        """Check if the different tokens were logged in one record, any level."""
         for record in self.buffer:
             msg = record.getMessage()
             if all(token in msg for token in tokens):
@@ -52,8 +57,8 @@ class SetupLogChecker(logging.handlers.MemoryHandler):
             msgs.append("    {:9s} {!r}".format(record.levelname, record.getMessage()))
         self.test_instance.fail("\n".join(msgs))
 
-    def _check(self, level, *tokens):
-        """Check if the the different tokens were logged in one record, assert by level."""
+    def _check_pos(self, level, *tokens):
+        """Check if the different tokens were logged in one record, assert by level."""
         for record in self.buffer:
             msg = record.getMessage()
             if all(record.levelno == level and token in msg for token in tokens):
@@ -65,6 +70,22 @@ class SetupLogChecker(logging.handlers.MemoryHandler):
         for record in self.buffer:
             msgs.append("    {:9s} {!r}".format(record.levelname, record.getMessage()))
         self.test_instance.fail("\n".join(msgs))
+
+    def _check_neg(self, level, *tokens):
+        """Check that the different tokens were NOT logged in one record, assert by level."""
+        for record in self.buffer:
+            msg = record.getMessage()
+            if level is not None and record.levelno != level:
+                continue
+            if all(token in msg for token in tokens):
+                break
+        else:
+            return
+
+        # didn't exit, all tokens found in the same record
+        msg = "Tokens {} found in the following record:  {}  {!r}".format(
+            tokens, record.levelname, record.getMessage())
+        self.test_instance.fail(msg)
 
 
 def setup(test_instance, logger_name):

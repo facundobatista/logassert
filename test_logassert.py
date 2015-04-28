@@ -68,6 +68,10 @@ class BasicUsageTestCase(unittest.TestCase):
         self.assertEqual(ftc.failed, "Tokens ('test', 'pumba') not found, all was logged is...\n"
                                      "    DEBUG     \"test 65 'foobar'\"")
 
+
+class LevelsTestCase(unittest.TestCase):
+    """Work aware of logging levels."""
+
     def test_assert_different_level_ok_debug(self):
         ftc = FakeTestCase()
         logger = logging.getLogger()
@@ -118,3 +122,65 @@ class BasicUsageTestCase(unittest.TestCase):
         self.assertEqual(
             ftc.failed, "Tokens ('test',) not found in WARNING, all was logged is...\n"
                         "    DEBUG     'test'")
+
+
+class NotLoggedTestCase(unittest.TestCase):
+    """Also check that it wasn't logged."""
+
+    def test_simple_ok(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        logger.debug("test")
+        ftc.assertNotLogged("other")
+        self.assertEqual(ftc.failed, None)
+
+    def test_simple_fail(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        logger.info("test")
+        ftc.assertNotLogged("test")
+        self.assertEqual(ftc.failed,
+                         "Tokens ('test',) found in the following record:  INFO  'test'")
+
+    def test_level_debug_ok(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        logger.info("test")
+        ftc.assertNotLoggedDebug("test")
+        self.assertEqual(ftc.failed, None)
+
+    def test_level_debug_fail(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        logger.debug("test")
+        ftc.assertNotLoggedDebug("test")
+        self.assertEqual(ftc.failed,
+                         "Tokens ('test',) found in the following record:  DEBUG  'test'")
+
+    def test_level_info(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        logger.debug("test")
+        ftc.assertNotLoggedInfo("test")
+        self.assertEqual(ftc.failed, None)
+
+    def test_level_warning(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        logger.info("test")
+        ftc.assertNotLoggedWarning("test")
+        self.assertEqual(ftc.failed, None)
+
+    def test_level_error(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        logger.info("test")
+        ftc.assertNotLoggedError("test")
+        self.assertEqual(ftc.failed, None)
