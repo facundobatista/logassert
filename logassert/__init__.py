@@ -1,0 +1,1 @@
+from .logassert import setup
