@@ -59,6 +59,25 @@ it misses one of the string, the second because it has the wrong log level)::
     logger.info("The secret of life, the universe and everything is 42")
 
 
+What can I test?
+----------------
+
+You'll have at disposition several assertion methods:
+
+- self.assertLogged: will check that the strings were logged,
+  no matter at which level
+
+- self.assertLoggedLEVEL (being LEVEL one of Error, Warning, Info, or
+  Debug): will check that the strings were logged at that specific level.
+
+- self.assertNotLogged: will check that the strings were NOT logged,
+  no matter at which level
+
+- self.assertNotLoggedLEVEL (being LEVEL one of Error, Warning, Info, or
+  Debug): will check that the strings were NOT logged at that
+  specific level.
+
+
 Nice! But...
 ------------
 
