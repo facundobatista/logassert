@@ -16,8 +16,11 @@
 
 """Main module."""
 
+import collections
 import functools
 import logging.handlers
+
+Record = collections.namedtuple("Record", "levelname levelno message")
 
 
 class SetupLogChecker(logging.handlers.MemoryHandler):
@@ -44,47 +47,53 @@ class SetupLogChecker(logging.handlers.MemoryHandler):
         logger.setLevel(logging.DEBUG)
         self.setLevel(logging.DEBUG)
 
+        # hold a kind of record with the message already composed
+        self.records = []
+
+    def emit(self, record):
+        """Store the message, not only the record."""
+        self.records.append(Record(levelno=record.levelno, levelname=record.levelname,
+                                   message=record.getMessage()))
+        return super(SetupLogChecker, self).emit(record)
+
     def _check_generic_pos(self, *tokens):
         """Check if the different tokens were logged in one record, any level."""
-        for record in self.buffer:
-            msg = record.getMessage()
-            if all(token in msg for token in tokens):
+        for record in self.records:
+            if all(token in record.message for token in tokens):
                 return
 
         # didn't exit, all tokens are not present in the same record
         msgs = ["Tokens {} not found, all was logged is...".format(tokens)]
-        for record in self.buffer:
-            msgs.append("    {:9s} {!r}".format(record.levelname, record.getMessage()))
+        for record in self.records:
+            msgs.append("    {:9s} {!r}".format(record.levelname, record.message))
         self.test_instance.fail("\n".join(msgs))
 
     def _check_pos(self, level, *tokens):
         """Check if the different tokens were logged in one record, assert by level."""
-        for record in self.buffer:
-            msg = record.getMessage()
-            if all(record.levelno == level and token in msg for token in tokens):
+        for record in self.records:
+            if all(record.levelno == level and token in record.message for token in tokens):
                 return
 
         # didn't exit, all tokens are not present in the same record
         level_name = logging.getLevelName(level)
         msgs = ["Tokens {} not found in {}, all was logged is...".format(tokens, level_name)]
-        for record in self.buffer:
-            msgs.append("    {:9s} {!r}".format(record.levelname, record.getMessage()))
+        for record in self.records:
+            msgs.append("    {:9s} {!r}".format(record.levelname, record.message))
         self.test_instance.fail("\n".join(msgs))
 
     def _check_neg(self, level, *tokens):
         """Check that the different tokens were NOT logged in one record, assert by level."""
-        for record in self.buffer:
-            msg = record.getMessage()
+        for record in self.records:
             if level is not None and record.levelno != level:
                 continue
-            if all(token in msg for token in tokens):
+            if all(token in record.message for token in tokens):
                 break
         else:
             return
 
         # didn't exit, all tokens found in the same record
         msg = "Tokens {} found in the following record:  {}  {!r}".format(
-            tokens, record.levelname, record.getMessage())
+            tokens, record.levelname, record.message)
         self.test_instance.fail(msg)
 
 

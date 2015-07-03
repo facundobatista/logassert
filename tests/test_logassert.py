@@ -68,6 +68,28 @@ class BasicUsageTestCase(unittest.TestCase):
         self.assertEqual(ftc.failed, "Tokens ('test', 'pumba') not found, all was logged is...\n"
                                      "    DEBUG     \"test 65 'foobar'\"")
 
+    def test_avoid_delayed_messaging(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+
+        class Exploding:
+            """Explode on delayed str."""
+            should_explode = False
+
+            def __str__(self):
+                if self.should_explode:
+                    raise ValueError("str exploded")
+                return "didn't explode"
+
+        # log something using the Exploding class
+        exploding = Exploding()
+        logger.debug("feeling lucky? %s", exploding)
+
+        # now flag the class to explode and check
+        exploding.should_explode = True
+        ftc.assertLogged("feeling lucky", "didn't explode")
+
 
 class LevelsTestCase(unittest.TestCase):
     """Work aware of logging levels."""
