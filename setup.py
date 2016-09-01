@@ -22,7 +22,7 @@ from distutils.core import setup
 
 setup(
     name='logassert',
-    version='3',
+    version='4',
     license='LGPL-3',
     author='Facundo Batista',
     author_email='facundo@taniquetil.com.ar',

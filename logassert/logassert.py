@@ -113,4 +113,4 @@ def setup(test_instance, logger_name):
                 (...)
                 self.assertLogged(...)
     """
-    SetupLogChecker(test_instance, logger_name)
+    return SetupLogChecker(test_instance, logger_name)
