@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+#!/usr/bin/env python3
 
 # Copyright 2015 Facundo Batista
 #
@@ -22,7 +22,7 @@ from distutils.core import setup
 
 setup(
     name='logassert',
-    version='2',
+    version='3',
     license='LGPL-3',
     author='Facundo Batista',
     author_email='facundo@taniquetil.com.ar',

@@ -53,7 +53,7 @@ class SetupLogChecker(logging.handlers.MemoryHandler):
     def emit(self, record):
         """Store the message, not only the record."""
         self.records.append(Record(levelno=record.levelno, levelname=record.levelname,
-                                   message=record.getMessage()))
+                                   message=self.format(record)))
         return super(SetupLogChecker, self).emit(record)
 
     def _check_generic_pos(self, *tokens):

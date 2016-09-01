@@ -34,27 +34,38 @@ class FakeTestCase:
 class BasicUsageTestCase(unittest.TestCase):
     """Basic usage."""
 
+    def setUp(self):
+        self.logger = logging.getLogger()
+        self.logger.handlers = []
+
     def test_simple_assert_ok(self):
         ftc = FakeTestCase()
-        logger = logging.getLogger()
         logassert.setup(ftc, '')
-        logger.debug("test")
+        self.logger.debug("test")
         ftc.assertLogged("test")
+        self.assertEqual(ftc.failed, None)
+
+    def test_simple_assert_ok_extras(self):
+        ftc = FakeTestCase()
+        logassert.setup(ftc, '')
+        formatter = logging.Formatter("%(message)s %(foo)s")
+        for h in self.logger.handlers:
+            h.setFormatter(formatter)
+        self.logger.debug("test", extra={'foo': 'bar'})
+        ftc.assertLogged("test bar")
         self.assertEqual(ftc.failed, None)
 
     def test_simple_assert_ok_with_replaces(self):
         ftc = FakeTestCase()
-        logger = logging.getLogger()
         logassert.setup(ftc, '')
-        logger.debug("test %d %r", 65, 'foobar')
+        self.logger.debug("test %d %r", 65, 'foobar')
         ftc.assertLogged("test", "65", "foobar")
         self.assertEqual(ftc.failed, None)
 
     def test_simple_assert_fail(self):
         ftc = FakeTestCase()
-        logger = logging.getLogger()
         logassert.setup(ftc, '')
-        logger.debug("test")
+        self.logger.debug("test")
         ftc.assertLogged("test2")
         self.assertEqual(ftc.failed, "Tokens ('test2',) not found, all was logged is...\n"
                                      "    DEBUG     'test'")
@@ -116,6 +127,19 @@ class LevelsTestCase(unittest.TestCase):
         logassert.setup(ftc, '')
         logger.error("test")
         ftc.assertLoggedError("test")
+        self.assertEqual(ftc.failed, None)
+
+    def test_assert_different_level_ok_exception(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        try:
+            raise ValueError("test error")
+        except:
+            logger.exception("test message")
+        ftc.assertLoggedError("test error")
+        ftc.assertLoggedError("test message")
+        ftc.assertLoggedError("ValueError")
         self.assertEqual(ftc.failed, None)
 
     def test_assert_different_level_ok_warning(self):
