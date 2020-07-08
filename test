@@ -1,0 +1,3 @@
+#!/bin/sh
+
+fades -d pytest -m pytest -p pytester "$@"
