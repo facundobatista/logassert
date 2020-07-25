@@ -19,11 +19,12 @@
 import collections
 import functools
 import logging.handlers
+import re
 
 Record = collections.namedtuple("Record", "levelname levelno message")
 
 
-class _BaseLogChecker(logging.handlers.MemoryHandler):
+class _StoringHandler(logging.handlers.MemoryHandler):
     """A fake handler to store the records."""
 
     def __init__(self, log_path):
@@ -32,6 +33,10 @@ class _BaseLogChecker(logging.handlers.MemoryHandler):
 
         # hook in the logger
         logger = logging.getLogger(log_path)
+
+        # ensure we're alone
+        logger.handlers[:] = [h for h in logger.handlers if not isinstance(h, _StoringHandler)]
+
         logger.addHandler(self)
         logger.setLevel(logging.DEBUG)
         self.setLevel(logging.DEBUG)
@@ -48,52 +53,12 @@ class _BaseLogChecker(logging.handlers.MemoryHandler):
         self.records.append(r)
         return super().emit(record)
 
-    def _check_generic_pos(self, *tokens):
-        """Check if the different tokens were logged in one record, any level."""
-        for record in self.records:
-            if all(token in record.message for token in tokens):
-                return
 
-        # didn't exit, all tokens are not present in the same record
-        msgs = ["Tokens {} not found, all was logged is...".format(tokens)]
-        for record in self.records:
-            msgs.append("    {:9s} {!r}".format(record.levelname, record.message))
-        self.fail("\n".join(msgs))
-
-    def _check_pos(self, level, *tokens):
-        """Check if the different tokens were logged in one record, assert by level."""
-        for record in self.records:
-            if all(record.levelno == level and token in record.message for token in tokens):
-                return
-
-        # didn't exit, all tokens are not present in the same record
-        level_name = logging.getLevelName(level)
-        msgs = ["Tokens {} not found in {}, all was logged is...".format(tokens, level_name)]
-        for record in self.records:
-            msgs.append("    {:9s} {!r}".format(record.levelname, record.message))
-        self.fail("\n".join(msgs))
-
-    def _check_neg(self, level, *tokens):
-        """Check that the different tokens were NOT logged in one record, assert by level."""
-        for record in self.records:
-            if level is not None and record.levelno != level:
-                continue
-            if all(token in record.message for token in tokens):
-                break
-        else:
-            return
-
-        # didn't exit, all tokens found in the same record
-        msg = "Tokens {} found in the following record:  {}  {!r}".format(
-            tokens, record.levelname, record.message)
-        self.fail(msg)
-
-
-class SetupLogChecker(_BaseLogChecker):
+class SetupLogChecker:
     """A version of the LogChecker to use in classic TestCases."""
 
     def __init__(self, test_instance, log_path):
-        super().__init__(log_path)
+        self._log_checker = _StoringHandler(log_path)
 
         # fix TestCase instance with all classic-looking helpers
         self.test_instance = test_instance
@@ -108,31 +73,107 @@ class SetupLogChecker(_BaseLogChecker):
         test_instance.assertNotLoggedInfo = functools.partial(self._check_neg, logging.INFO)
         test_instance.assertNotLoggedDebug = functools.partial(self._check_neg, logging.DEBUG)
 
-    def fail(self, message):
-        """Called on failure."""
-        self.test_instance.fail(message)
+    def _check_generic_pos(self, *tokens):
+        """Check if the different tokens were logged in one record, any level."""
+        for record in self._log_checker.records:
+            if all(token in record.message for token in tokens):
+                return
+
+        # didn't exit, all tokens are not present in the same record
+        msgs = ["Tokens {} not found, all was logged is...".format(tokens)]
+        for record in self._log_checker.records:
+            msgs.append("    {:9s} {!r}".format(record.levelname, record.message))
+        self.test_instance.fail("\n".join(msgs))
+
+    def _check_pos(self, level, *tokens):
+        """Check if the different tokens were logged in one record, assert by level."""
+        for record in self._log_checker.records:
+            if all(record.levelno == level and token in record.message for token in tokens):
+                return
+
+        # didn't exit, all tokens are not present in the same record
+        level_name = logging.getLevelName(level)
+        msgs = ["Tokens {} not found in {}, all was logged is...".format(tokens, level_name)]
+        for record in self._log_checker.records:
+            msgs.append("    {:9s} {!r}".format(record.levelname, record.message))
+        self.test_instance.fail("\n".join(msgs))
+
+    def _check_neg(self, level, *tokens):
+        """Check that the different tokens were NOT logged in one record, assert by level."""
+        for record in self._log_checker.records:
+            if level is not None and record.levelno != level:
+                continue
+            if all(token in record.message for token in tokens):
+                break
+        else:
+            return
+
+        # didn't exit, all tokens found in the same record
+        msg = "Tokens {} found in the following record:  {}  {!r}".format(
+            tokens, record.levelname, record.message)
+        self.test_instance.fail(msg)
 
 
-class FixtureLogChecker(_BaseLogChecker):
+class PyTestComparer:
+    def __init__(self, handler, level=None):
+        self.handler = handler
+        self.level = level
+        self.messages = None
+
+    def __contains__(self, item):
+        # check and store any given messages to be used when pytest asks for them at the moment
+        # of showing the information to the user
+        self.messages = self._check_regex(item, self.level)
+
+        # if have messages, return False to pytest so it flags the test as "failed"
+        return not self.messages
+
+    def _check_regex(self, regex, level):
+        """Check if the regex applies to one logged record."""
+        #FIXME:
+        #    Exact()
+        #    Multiple()
+        compiled_regex = re.compile(regex)
+        for record in self.handler.records:
+            message = record.message.split('\n')[0]  # only first line on logger.exception calls
+            if (record.levelno == level or level is None) and compiled_regex.search(message):
+                return
+
+        # didn't match any of the records
+        level_name = logging.getLevelName(level)
+        msgs = ["Regex {!r} not found in {}, all was logged is...".format(regex, level_name)]
+        for record in self.handler.records:
+            message = record.message.split('\n')[0]  #FIXME refactor
+            msgs.append("    {:9s} {!r}".format(record.levelname, message))
+        return msgs
+
+
+class FixtureLogChecker:
     """A version of the LogChecker to use as a pytest fixture."""
 
-    def __init__(self, log_path=''):
-        super().__init__(log_path)
+    # translation between the attributes and logging levels
+    _levels = {
+        'any_level': None,
+        'debug': logging.DEBUG,
+        'info': logging.INFO,
+        'warning': logging.WARNING,
+        'error': logging.ERROR,
+    }
 
-        self.assert_logged = self._check_generic_pos
-        self.assert_error = functools.partial(self._check_pos, logging.ERROR)
-        self.assert_warning = functools.partial(self._check_pos, logging.WARNING)
-        self.assert_info = functools.partial(self._check_pos, logging.INFO)
-        self.assert_debug = functools.partial(self._check_pos, logging.DEBUG)
-        self.assert_not_logged = functools.partial(self._check_neg, None)
-        self.assert_not_error = functools.partial(self._check_neg, logging.ERROR)
-        self.assert_not_warning = functools.partial(self._check_neg, logging.WARNING)
-        self.assert_not_info = functools.partial(self._check_neg, logging.INFO)
-        self.assert_not_debug = functools.partial(self._check_neg, logging.DEBUG)
+    def __init__(self):
+        self.handler = _StoringHandler('')
 
-    def fail(self, message):
-        """Called on failure."""
-        raise AssertionError(message)
+    def __getattribute__(self, name):
+        # this is handled dinamically so we don't need to create a bunch of PyTestComparares
+        # for every test, specially because most of them won't be used in that test
+        _levels = object.__getattribute__(self, '_levels')
+        try:
+            level = _levels[name]
+        except KeyError:
+            raise AttributeError("'FixtureLogChecker' object has no attribute {!r}".format(name))
+
+        handler = object.__getattribute__(self, 'handler')
+        return PyTestComparer(handler, level)
 
 
 def setup(test_instance, logger_name):

@@ -14,59 +14,89 @@ As is vox populi, you must also test the logging calls in your programs.
 With `logassert` this is now very easy.
 
 
-## What can I test?
+## Awesome! How do I use it?
 
-You'll have at disposition several assertion methods:
-
-- `self.assertLogged` / `assert_logged`: will check that the strings 
-  were logged, no matter at which level
-
-- `self.assertLoggedLEVEL` / `assert_LEVEL` (being LEVEL one of error, 
-  warning, info, or debug): will check that the strings were logged at 
-  that specific level.
-
-- `self.assertNotLogged` / `assert_not_logged`: will check that the 
-  strings were NOT logged, no matter at which level
-
-- `self.assertNotLoggedLEVEL` / `assert_not_LEVEL` (being LEVEL one of 
-  error, warning, info, or debug): will check that the strings were NOT 
-  logged at that specific level.
-
-
-## Awesome! How to use it?
-
+The same functionality is exposed in two very different ways, one that fits better the *pytest semantics*, the other one more suitable for classic unit tests.
 
 ### For pytest
 
-All you need to do is to declare `logged` in your test arguments, it works
+All you need to do is to declare `logs` in your test arguments, it works
 just like any other fixture.
+
+Then you just check (using `assert`, as usual with *pytest*) if a specific 
+line is in the logs for a specific level.
 
 Example:
 
 ```python
-def test_bleh(logged)
+def test_bleh(logs)
     (...)
-    logged.assert_debug('secret', 'life', '42')
+    assert "The meaning of life is 42" in logs.debug
 ```
 
-That line will check that "secret", "life" and "42" are all logged in the
-same logging call, in DEBUG level.
-
-So, if you logged this, the test will pass:
+Actually, the line you write is a regular expression, so you can totally 
+do (in case you're not exactly sure which the meaning of life is):
 
 ```python
-logger.debug("The secret of life, the universe and everything is %d", 42)
+    assert "The meaning of life is \d+" in logs.debug
 ```
 
-Note that the message checked is the one with all parameters replaced.
+Note that the message checked is the final one, after the logging system 
+replaced all the indicated parameters in the indicated string.
 
-But if you logged any of the following, the test will fail (the first because
-it misses one of the string, the second because it has the wrong log level)::
+If you want to verify that a text was logged, no matter at which level,
+just do:
 
 ```python
-logger.debug("The secret of life, the universe and everything is lost")
-logger.info("The secret of life, the universe and everything is 42")
+    assert "The meaning of life is 42" in logs.any_level
 ```
+
+To verify that some text was NOT logged, just juse the Python's syntax! 
+For example:
+
+```python
+    assert "A problem happened" not in logs.error
+```
+
+
+### Examples
+
+After logging...
+
+```python
+    person = "madam"
+    item = "wallet"
+    logger.debug("Excuse me %s, you dropped your %s", person, item)
+```
+
+...the following test will just pass:
+
+```python
+    assert "Excuse me .*?, you dropped your wallet" in logs.debug
+```
+
+However, the following will fail (different text!)...
+
+```python
+    assert "Excuse me .*?, you lost your wallet" in logs.debug
+```
+
+...producing this message in your tests:
+
+# FIXME
+
+This one will also fail (different level!)...
+
+```python
+assert "Excuse me .*?, you dropped your wallet" in logs.info
+```
+
+...producing this message in your tests:
+
+# FIXME
+
+
+
 
 
 ### For classic TestCases
@@ -117,6 +147,25 @@ it misses one of the string, the second because it has the wrong log level)::
 logger.debug("The secret of life, the universe and everything is lost")
 logger.info("The secret of life, the universe and everything is 42")
 ```
+
+### What can I test?
+
+You'll have at disposition several assertion methods:
+
+- `self.assertLogged`: will check that the strings 
+  were logged, no matter at which level
+
+- `self.assertLoggedLEVEL` (being LEVEL one of Error, 
+  Warning, Info, or Debug): will check that the strings were logged at 
+  that specific level.
+
+- `self.assertNotLogged`: will check that the 
+  strings were NOT logged, no matter at which level
+
+- `self.assertNotLoggedLEVEL` (being LEVEL one of 
+  Error, Warning, Info, or Debug): will check that the strings were NOT 
+  logged at that specific level.
+
 
 
 ## Nice! But...

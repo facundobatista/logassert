@@ -27,7 +27,7 @@ setup(
     author='Facundo Batista',
     author_email='facundo@taniquetil.com.ar',
     description='Simple but powerful assertion and verification of logged lines.',
-    long_description=open('README.rst').read(),
+    long_description=open('README.md').read(),
     url='https://github.com/facundobatista/logassert',
 
     # the following makes a plugin available to pytest

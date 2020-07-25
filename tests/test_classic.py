@@ -38,11 +38,6 @@ class BasicUsageTestCase(unittest.TestCase):
         self.logger = logging.getLogger()
         self.logger.handlers = []
 
-    def test_get_handler(self):
-        ftc = FakeTestCase()
-        h = logassert.setup(ftc, '')
-        self.assertIsInstance(h, logging.Handler)
-
     def test_simple_assert_ok(self):
         ftc = FakeTestCase()
         logassert.setup(ftc, '')
@@ -140,7 +135,7 @@ class LevelsTestCase(unittest.TestCase):
         logassert.setup(ftc, '')
         try:
             raise ValueError("test error")
-        except:
+        except Exception:
             logger.exception("test message")
         ftc.assertLoggedError("test error")
         ftc.assertLoggedError("test message")

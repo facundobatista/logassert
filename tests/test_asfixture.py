@@ -1,4 +1,4 @@
-# Copyright 2015 Facundo Batista
+# Copyright 2020 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -21,63 +21,98 @@ import os
 
 import pytest
 
-from logassert.logassert import FixtureLogChecker
-
-
-@pytest.fixture
-def logger():
-    lgr = logging.getLogger()
-    lgr.handlers = []
-    return lgr
+logger = logging.getLogger()
 
 
 # -- Basic usage
 
-def test_basic_simple_assert_ok(logger):
-    flc = FixtureLogChecker()
+def test_basic_simple_assert_ok_simple(logs):
     logger.debug("test")
-    flc.assert_logged("test")
+    assert "test" in logs.any_level
 
 
-def test_basic_simple_assert_ok_extras(logger):
-    flc = FixtureLogChecker()
+def test_basic_simple_assert_ok_extras(logs):
     formatter = logging.Formatter("%(message)s %(foo)s")
     for h in logger.handlers:
         h.setFormatter(formatter)
     logger.debug("test", extra={'foo': 'bar'})
-    flc.assert_logged("test bar")
+    assert "test bar" in logs.any_level
 
 
-def test_basic_simple_assert_ok_with_replaces(logger):
-    flc = FixtureLogChecker()
+def test_basic_simple_assert_ok_with_replaces(logs):
     logger.debug("test %d %r", 65, 'foobar')
-    flc.assert_logged("test", "65", "foobar")
+    assert "test 65 'foobar'" in logs.any_level
 
 
-def test_basic_simple_assert_fail(logger):
-    flc = FixtureLogChecker()
-    logger.debug("test")
-    with pytest.raises(AssertionError) as cm:
-        flc.assert_logged("test2")
-    assert str(cm.value) == (
-        "Tokens ('test2',) not found, all was logged is...\n"
-        "    DEBUG     'test'")
+def test_basic_simple_negated_assert_(logs):
+    logger.debug("aaa")
+    assert "aaa" not in logs.warning  # different than logged
+    assert "bbb" not in logs.any_level  # checking other text in any level
+    assert "bbb" not in logs.debug  # checking other text in same level
 
 
-def test_basic_simple_assert_fail_with_replaces():
-    flc = FixtureLogChecker()
-    logger = logging.getLogger()
-    logger.debug("test %d %r", 65, 'foobar')
-    with pytest.raises(AssertionError) as cm:
-        flc.assert_logged("test", "pumba")
-    assert str(cm.value) == (
-        "Tokens ('test', 'pumba') not found, all was logged is...\n"
-        "    DEBUG     \"test 65 'foobar'\"")
+def test_failure_message_simple(logs):
+    logger.debug("aaa")
+    comparer = logs.debug
+    check_ok = comparer.__contains__("bbb")
+    assert not check_ok
+    assert comparer.messages == [
+        "Regex 'bbb' not found in DEBUG, all was logged is...",
+        "    DEBUG     'aaa'",
+    ]
 
 
-def test_basic_avoid_delayed_messaging():
-    flc = FixtureLogChecker()
+def test_failure_message_multiple(logs):
+    logger.debug("aaa")
+    logger.warning("bbb")
+    comparer = logs.debug
+    check_ok = comparer.__contains__("bbb")
+    assert not check_ok
+    assert comparer.messages == [
+        "Regex 'bbb' not found in DEBUG, all was logged is...",
+        "    DEBUG     'aaa'",
+        "    WARNING   'bbb'",
+    ]
 
+
+def test_failure_message_exception(logs):
+    try:
+        raise ValueError("test error")
+    except ValueError:
+        logger.exception("test message")
+
+    comparer = logs.error
+    check_ok = comparer.__contains__("will make it fail")
+    assert not check_ok
+    assert comparer.messages == [
+        "Regex 'will make it fail' not found in ERROR, all was logged is...",
+        "    ERROR     'test message'",
+    ]
+
+
+def test_regex_matching_exact(logs):
+    logger.debug("foo 42")
+    assert r"foo 42" in logs.debug
+    assert r"foo \d\d" in logs.debug
+
+
+def test_regex_matching_inside(logs):
+    logger.debug("foo bar 42")
+    assert r"bar \d\d" in logs.debug
+    assert r"ba." in logs.debug
+    assert r"f.. bar" in logs.debug
+    with pytest.raises(AssertionError):
+        assert r"foo 42" in logs.debug
+
+
+def test_regex_matching_forcing_complete(logs):
+    logger.debug("foo x bar")
+    assert r"^foo . bar$" in logs.debug
+    with pytest.raises(AssertionError):
+        assert r"^foo .$" in logs.debug
+
+
+def test_basic_avoid_delayed_messaging(logs):
     class Exploding:
         """Explode on delayed str."""
         should_explode = False
@@ -94,117 +129,54 @@ def test_basic_avoid_delayed_messaging():
 
     # now flag the class to explode and check
     exploding.should_explode = True
-    flc.assert_logged("feeling lucky", "didn't explode")
+    assert r"feeling lucky\? didn't explode" in logs.debug
 
 
 # -- Levels
 
-def test_levels_assert_different_level_ok_debug(logger):
-    flc = FixtureLogChecker()
+def test_levels_assert_ok_debug(logs):
     logger.debug("test")
-    flc.assert_debug("test")
+    assert "test" in logs.debug
 
 
-def test_levels_assert_different_level_ok_info(logger):
-    flc = FixtureLogChecker()
+def test_levels_assert_ok_info(logs):
     logger.info("test")
-    flc.assert_info("test")
+    assert "test" in logs.info
 
 
-def test_levels_assert_different_level_ok_error(logger):
-    flc = FixtureLogChecker()
+def test_levels_assert_ok_warning(logs):
+    logger.warning("test")
+    assert "test" in logs.warning
+
+
+def test_levels_assert_ok_error(logs):
     logger.error("test")
-    flc.assert_error("test")
+    assert "test" in logs.error
 
 
-def test_levels_assert_different_level_ok_exception(logger):
-    flc = FixtureLogChecker()
+def test_levels_assert_ok_exception(logs):
     try:
         raise ValueError("test error")
     except ValueError:
         logger.exception("test message")
-    flc.assert_error("test error")
-    flc.assert_error("test message")
-    flc.assert_error("ValueError")
+    assert "^test message$" in logs.error
 
 
-def test_levels_assert_different_level_ok_warning(logger):
-    flc = FixtureLogChecker()
+def test_levels_assert_different_level_fail_debug_warning(logs):
     logger.warning("test")
-    flc.assert_warning("test")
+    with pytest.raises(AssertionError):
+        assert "test" in logs.debug
 
 
-def test_levels_assert_different_level_fail_oneway(logger):
-    flc = FixtureLogChecker()
-    logger.warning("test")
-    with pytest.raises(AssertionError) as cm:
-        flc.assert_debug("test")
-    assert str(cm.value) == (
-        "Tokens ('test',) not found in DEBUG, all was logged is...\n"
-        "    WARNING   'test'")
-
-
-def test_levels_assert_different_level_fail_inverse(logger):
-    flc = FixtureLogChecker()
+def test_levels_assert_different_level_fail_warning_debug(logs):
     logger.debug("test")
-    with pytest.raises(AssertionError) as cm:
-        flc.assert_warning("test")
-    assert str(cm.value) == (
-        "Tokens ('test',) not found in WARNING, all was logged is...\n"
-        "    DEBUG     'test'")
-
-
-# -- Negative assertions
-
-def test_negative_simple_ok(logger):
-    flc = FixtureLogChecker()
-    logger.debug("test")
-    flc.assert_not_logged("other")
-
-
-def test_negative_simple_fail(logger):
-    flc = FixtureLogChecker()
-    logger.info("test")
-    with pytest.raises(AssertionError) as cm:
-        flc.assert_not_logged("test")
-    assert str(cm.value) == "Tokens ('test',) found in the following record:  INFO  'test'"
-
-
-def test_negative_level_debug_ok(logger):
-    flc = FixtureLogChecker()
-    logger.info("test")
-    flc.assert_not_debug("test")
-
-
-def test_negative_level_debug_fail(logger):
-    flc = FixtureLogChecker()
-    logger.debug("test")
-    with pytest.raises(AssertionError) as cm:
-        flc.assert_not_debug("test")
-    assert str(cm.value) == "Tokens ('test',) found in the following record:  DEBUG  'test'"
-
-
-def test_negative_level_info(logger):
-    flc = FixtureLogChecker()
-    logger.debug("test")
-    flc.assert_not_info("test")
-
-
-def test_negative_level_warning(logger):
-    flc = FixtureLogChecker()
-    logger.info("test")
-    flc.assert_not_warning("test")
-
-
-def test_negative_level_error(logger):
-    flc = FixtureLogChecker()
-    logger.info("test")
-    flc.assert_not_error("test")
+    with pytest.raises(AssertionError):
+        assert "test" in logs.warning
 
 
 # -- Usage as a fixture!
 
-def test_as_fixture(testdir, pytestconfig):
+def test_as_fixture_basic(testdir, pytestconfig):
     """Make sure that our plugin works."""
     # create a temporary conftest.py file
     plugin_fpath = os.path.join(pytestconfig.rootdir, 'logassert', 'pytest_plugin.py')
@@ -214,8 +186,8 @@ def test_as_fixture(testdir, pytestconfig):
     # create a temporary pytest test file
     testdir.makepyfile(
         """
-        def test_hello_default(logged):
-            logged.assert_not_logged("anything")
+        def test_hello_default(logs):
+            assert "anything" not in logs.any_level
     """
     )
 
@@ -224,3 +196,69 @@ def test_as_fixture(testdir, pytestconfig):
 
     # check that the test passed
     result.assert_outcomes(passed=1)
+
+
+def test_as_fixture_double_handler(testdir, pytestconfig):
+    """Check that we don't hook many handlers."""
+    # create a temporary conftest.py file
+    plugin_fpath = os.path.join(pytestconfig.rootdir, 'logassert', 'pytest_plugin.py')
+    with open(plugin_fpath, 'rt', encoding='utf8') as fh:
+        testdir.makeconftest(fh.read())
+
+    # create a temporary pytest test file
+    testdir.makepyfile(
+        """
+        from logassert import logassert
+
+        import logging
+
+        logger = logging.getLogger()
+
+        def test_1(logs):
+            logger.debug('test')
+            assert "test" in logs.any_level
+
+        def test_2(logs):
+            logger.debug('test')
+            assert "test" in logs.debug
+            assert len(
+                [h for h in logger.handlers if isinstance(h, logassert._StoringHandler)]) == 1
+    """
+    )
+
+    # run the test with pytest
+    result = testdir.runpytest()
+    print('\n'.join(result.stdout.lines))
+
+    # check that the test passed
+    result.assert_outcomes(passed=2)
+
+
+def test_as_fixture_no_record_leaking(testdir, pytestconfig):
+    """Nothing is leaked between tests."""
+    # create a temporary conftest.py file
+    plugin_fpath = os.path.join(pytestconfig.rootdir, 'logassert', 'pytest_plugin.py')
+    with open(plugin_fpath, 'rt', encoding='utf8') as fh:
+        testdir.makeconftest(fh.read())
+
+    # create a temporary pytest test file
+    testdir.makepyfile(
+        """
+        import logging
+
+        logger = logging.getLogger()
+
+        def test_1(logs):
+            logger.debug('test')
+            assert "test" in logs.any_level
+
+        def test_2(logs):
+            assert "test" not in logs.any_level
+    """
+    )
+
+    # run the test with pytest
+    result = testdir.runpytest()
+
+    # check that the test passed
+    result.assert_outcomes(passed=2)

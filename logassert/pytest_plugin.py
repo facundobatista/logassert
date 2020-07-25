@@ -20,10 +20,18 @@ from logassert import logassert
 
 import pytest
 
-print("=========== wtf 0")
 
 @pytest.fixture()
-def logged(request):
-    """Provide the logassert functionality through a fixture."""
-    print("=========== wtf 1")
+def logs(request):
+    """Provide the logassert functionality through a fixture.
+
+    Its scope is "session" so it hooks the log handler only once.
+    """
     return logassert.FixtureLogChecker()
+
+
+@pytest.hookimpl()
+def pytest_assertrepr_compare(op, left, right):
+    print("============== hook!!", (op, left, right))
+    if op == "in" and isinstance(right, logassert.PyTestComparer):
+        return right.messages
