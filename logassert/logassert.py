@@ -114,6 +114,30 @@ class SetupLogChecker:
         self.test_instance.fail(msg)
 
 
+class Matcher:
+    """A generic matcher."""
+    def __init__(self, token):
+        self.token = token
+
+    def search(self, message):
+        """Search the token in the message, return if it's present."""
+        raise NotImplementedError()
+
+    def __str__(self):
+        return "{} {!r}".format(self.__class__.__name__, self.token)
+
+
+class Regex(Matcher):
+    """A matcher that uses the token string as a regex."""
+    def __init__(self, token):
+        super().__init__(token)
+        self.regex = re.compile(token)
+
+    def search(self, message):
+        """Search the token in the message, return if it's present."""
+        return bool(self.regex.search(message))
+
+
 class PyTestComparer:
     def __init__(self, handler, level=None):
         self.handler = handler
@@ -121,30 +145,43 @@ class PyTestComparer:
         self.messages = None
 
     def __contains__(self, item):
+        # item is not specific, so default to Regex
+        if isinstance(item, str):
+            matcher = Regex(item)
+        elif isinstance(item, Matcher):
+            matcher = item
+        else:
+            raise ValueError("Unknown item type: {!r}".format(item))
+
         # check and store any given messages to be used when pytest asks for them at the moment
         # of showing the information to the user
-        self.messages = self._check_regex(item, self.level)
+        self.messages = self._check(matcher, self.level)
 
         # if have messages, return False to pytest so it flags the test as "failed"
         return not self.messages
 
-    def _check_regex(self, regex, level):
+    def _check(self, matcher, level):
         """Check if the regex applies to one logged record."""
-        #FIXME:
+        #FIXME
         #    Exact()
         #    Multiple()
-        compiled_regex = re.compile(regex)
-        for record in self.handler.records:
-            message = record.message.split('\n')[0]  # only first line on logger.exception calls
-            if (record.levelno == level or level is None) and compiled_regex.search(message):
-                return
+        #    README!!!
 
-        # didn't match any of the records
+        # get the messages with corresponding levels
+        logged_records = [
+            (r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]
+
+        # verify if the matcher is ok with any of the logged levels/messages
+        for logged_level, _, logged_message in logged_records:
+            if logged_level == level or level is None:
+                if matcher.search(logged_message):
+                    return
+
+        # didn't match any of the records, so prepare the resulting messages
         level_name = logging.getLevelName(level)
-        msgs = ["Regex {!r} not found in {}, all was logged is...".format(regex, level_name)]
-        for record in self.handler.records:
-            message = record.message.split('\n')[0]  #FIXME refactor
-            msgs.append("    {:9s} {!r}".format(record.levelname, message))
+        msgs = ["{} not found in {}, all was logged is...".format(matcher, level_name)]
+        for _, logged_levelname, logged_message in logged_records:
+            msgs.append("    {:9s} {!r}".format(logged_levelname, logged_message))
         return msgs
 
 
