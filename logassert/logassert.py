@@ -138,6 +138,25 @@ class Regex(Matcher):
         return bool(self.regex.search(message))
 
 
+class Exact(Matcher):
+    """A matcher that matches exactly the token string."""
+
+    def search(self, message):
+        """Search the token in the message, return if it's present."""
+        return self.token == message
+
+
+class Multiple(Matcher):
+    """A matcher that matches multiple tokens (legacy support)."""
+
+    def __init__(self, *tokens):
+        super().__init__(tokens)
+
+    def search(self, message):
+        """Search the token in the message, return if it's present."""
+        return all(t in message for t in self.token)
+
+
 class PyTestComparer:
     def __init__(self, handler, level=None):
         self.handler = handler
@@ -162,11 +181,6 @@ class PyTestComparer:
 
     def _check(self, matcher, level):
         """Check if the regex applies to one logged record."""
-        #FIXME
-        #    Exact()
-        #    Multiple()
-        #    README!!!
-
         # get the messages with corresponding levels
         logged_records = [
             (r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]

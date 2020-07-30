@@ -14,4 +14,4 @@
 #
 # For further info, check  https://github.com/facundobatista/logassert
 
-from .logassert import setup  # NOQA (imported but not used)
+from .logassert import setup, Exact, Regex, Multiple  # NOQA (imported but not used)

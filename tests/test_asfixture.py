@@ -21,6 +21,8 @@ import os
 
 import pytest
 
+from logassert import Exact, Multiple
+
 logger = logging.getLogger()
 
 
@@ -110,6 +112,45 @@ def test_regex_matching_forcing_complete(logs):
     assert r"^foo . bar$" in logs.debug
     with pytest.raises(AssertionError):
         assert r"^foo .$" in logs.debug
+
+
+def test_exact_cases(logs):
+    logger.debug("foo 42")
+    assert Exact("foo 42") in logs.debug
+    assert Exact("foo ..") not in logs.debug
+    assert Exact("foo") not in logs.debug
+
+
+def test_exact_failure(logs):
+    logger.debug("aaa")
+    comparer = logs.debug
+    check_ok = comparer.__contains__(Exact("bbb"))
+    assert not check_ok
+    assert comparer.messages == [
+        "Exact 'bbb' not found in DEBUG, all was logged is...",
+        "    DEBUG     'aaa'",
+    ]
+
+
+def test_multiple_cases(logs):
+    logger.debug("foo bar 42")
+    assert Multiple("foo bar 42") in logs.debug
+    assert Multiple("foo bar 42", "extra") not in logs.debug
+    assert Multiple("foo", "bar") in logs.debug
+    assert Multiple("42", "bar") in logs.debug
+    assert Multiple("foo 42") not in logs.debug
+    assert Multiple("foo.*") not in logs.debug
+
+
+def test_multiple_failure(logs):
+    logger.debug("aaa")
+    comparer = logs.debug
+    check_ok = comparer.__contains__(Multiple("bbb", 'ccc'))
+    assert not check_ok
+    assert comparer.messages == [
+        "Multiple ('bbb', 'ccc') not found in DEBUG, all was logged is...",
+        "    DEBUG     'aaa'",
+    ]
 
 
 def test_basic_avoid_delayed_messaging(logs):

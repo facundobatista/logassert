@@ -14,11 +14,11 @@ As is vox populi, you must also test the logging calls in your programs.
 With `logassert` this is now very easy.
 
 
-## Awesome! How do I use it?
+# Awesome! How do I use it?
 
 The same functionality is exposed in two very different ways, one that fits better the *pytest semantics*, the other one more suitable for classic unit tests.
 
-### For pytest
+## For pytest
 
 All you need to do is to declare `logs` in your test arguments, it works
 just like any other fixture.
@@ -41,7 +41,7 @@ do (in case you're not exactly sure which the meaning of life is):
     assert "The meaning of life is \d+" in logs.debug
 ```
 
-Note that the message checked is the final one, after the logging system 
+> **NOTE**: the message checked is the final one, after the logging system 
 replaced all the indicated parameters in the indicated string.
 
 If you want to verify that a text was logged, no matter at which level,
@@ -56,6 +56,30 @@ For example:
 
 ```python
     assert "A problem happened" not in logs.error
+```
+
+### But I don't like regexes, I want the exact string
+
+Then you just import `Exact` from `logassert` and wrap the string 
+with that.
+
+For example, in this case the `..` means exactly two dots, no regex
+semantics at all:
+
+```python
+    assert Exact("The meaning of life is ..") in logs.any_level
+```
+
+
+### Anyway, I liked old behaviour of searching multiple strings
+
+Then you may want to import `Multiple` from `logassert` and wrap the
+different strings you had in each call for the classic behaviour.
+
+For example:
+
+```python
+    assert Multiple("life", "meaning", "42") in logs.any_level
 ```
 
 
@@ -83,23 +107,47 @@ However, the following will fail (different text!)...
 
 ...producing this message in your tests:
 
-# FIXME
+```
+Regex 'Excuse me .*?, you lost your wallet' not found in DEBUG, all was logged is...
+    DEBUG     'Excuse me madam, you dropped your wallet'
+```
 
 This one will also fail (different level!)...
 
 ```python
-assert "Excuse me .*?, you dropped your wallet" in logs.info
+    assert "Excuse me .*?, you dropped your wallet" in logs.info
 ```
 
 ...producing this message in your tests:
 
-# FIXME
+```
+Regex 'Excuse me .*?, you dropped your wallet' not found in INFO, all was logged is...
+    DEBUG     'Excuse me madam, you dropped your wallet'
+```
+
+A more complex example, with several log lines, and a specific assertion:
+
+```python
+    logger.info("Starting system")
+    places = ['/tmp/', '~/temp']
+    logger.debug("Checking for config XYZ in all these places %s", places)
+    logger.warning("bad config XYZ")
+
+    assert "bad config XYZ" in logs.debug
+```
+
+See how the test failure message is super helpful:
+
+```
+Regex 'bad config XYZ' not found in DEBUG, all was logged is...
+    INFO      'Starting system'
+    DEBUG     "Checking for config XYZ in all these places ['/tmp/', '~/temp']"
+    WARNING   'bad config XYZ'
+
+```
 
 
-
-
-
-### For classic TestCases
+## For classic TestCases
 
 All you need to do is to call this module's `setup()` passing the test case
 instance, and the logger you want to supervise.
@@ -119,7 +167,8 @@ different subsystems of your code log in other loggers, this tester
 won't notice.
 
 Then, to use it, just call the `assertLogged` method and it's family,
-passing all the strings you want to find.
+passing all the strings you want to find. This is the default behaviour for
+backwards compatibility.
 
 Example:
 
@@ -168,7 +217,7 @@ You'll have at disposition several assertion methods:
 
 
 
-## Nice! But...
+# Nice! But...
 
 If you need help, or have any question, or found any issue, please open a
 ticket [here](https://github.com/facundobatista/logassert/issues/new).

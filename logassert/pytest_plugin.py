@@ -32,6 +32,6 @@ def logs(request):
 
 @pytest.hookimpl()
 def pytest_assertrepr_compare(op, left, right):
-    print("============== hook!!", (op, left, right))
+    """Hook called by pytest to return the messages to show to the user."""
     if op == "in" and isinstance(right, logassert.PyTestComparer):
         return right.messages
