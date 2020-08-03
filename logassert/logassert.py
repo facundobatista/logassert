@@ -124,7 +124,7 @@ class Matcher:
         raise NotImplementedError()
 
     def __str__(self):
-        return "{} {!r}".format(self.__class__.__name__, self.token)
+        return "{} {!r}".format(self.__class__.__name__.lower(), self.token)
 
 
 class Regex(Matcher):
@@ -193,9 +193,9 @@ class PyTestComparer:
 
         # didn't match any of the records, so prepare the resulting messages
         level_name = logging.getLevelName(level)
-        msgs = ["{} not found in {}, all was logged is...".format(matcher, level_name)]
+        msgs = ["for {} check in {} failed; logged lines:".format(matcher, level_name)]
         for _, logged_levelname, logged_message in logged_records:
-            msgs.append("    {:9s} {!r}".format(logged_levelname, logged_message))
+            msgs.append("     {:9s} {!r}".format(logged_levelname, logged_message))
         return msgs
 
 
@@ -215,6 +215,10 @@ class FixtureLogChecker:
         self.handler = _StoringHandler('')
 
     def __getattribute__(self, name):
+        handler = object.__getattribute__(self, 'handler')
+        if name == 'reset':
+            return handler.records.clear
+
         # this is handled dinamically so we don't need to create a bunch of PyTestComparares
         # for every test, specially because most of them won't be used in that test
         _levels = object.__getattribute__(self, '_levels')
@@ -223,7 +227,6 @@ class FixtureLogChecker:
         except KeyError:
             raise AttributeError("'FixtureLogChecker' object has no attribute {!r}".format(name))
 
-        handler = object.__getattribute__(self, 'handler')
         return PyTestComparer(handler, level)
 
 

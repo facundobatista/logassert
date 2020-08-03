@@ -59,8 +59,8 @@ def test_failure_message_simple(logs):
     check_ok = comparer.__contains__("bbb")
     assert not check_ok
     assert comparer.messages == [
-        "Regex 'bbb' not found in DEBUG, all was logged is...",
-        "    DEBUG     'aaa'",
+        "for regex 'bbb' check in DEBUG failed; logged lines:",
+        "     DEBUG     'aaa'",
     ]
 
 
@@ -71,9 +71,9 @@ def test_failure_message_multiple(logs):
     check_ok = comparer.__contains__("bbb")
     assert not check_ok
     assert comparer.messages == [
-        "Regex 'bbb' not found in DEBUG, all was logged is...",
-        "    DEBUG     'aaa'",
-        "    WARNING   'bbb'",
+        "for regex 'bbb' check in DEBUG failed; logged lines:",
+        "     DEBUG     'aaa'",
+        "     WARNING   'bbb'",
     ]
 
 
@@ -87,8 +87,8 @@ def test_failure_message_exception(logs):
     check_ok = comparer.__contains__("will make it fail")
     assert not check_ok
     assert comparer.messages == [
-        "Regex 'will make it fail' not found in ERROR, all was logged is...",
-        "    ERROR     'test message'",
+        "for regex 'will make it fail' check in ERROR failed; logged lines:",
+        "     ERROR     'test message'",
     ]
 
 
@@ -127,8 +127,8 @@ def test_exact_failure(logs):
     check_ok = comparer.__contains__(Exact("bbb"))
     assert not check_ok
     assert comparer.messages == [
-        "Exact 'bbb' not found in DEBUG, all was logged is...",
-        "    DEBUG     'aaa'",
+        "for exact 'bbb' check in DEBUG failed; logged lines:",
+        "     DEBUG     'aaa'",
     ]
 
 
@@ -148,8 +148,8 @@ def test_multiple_failure(logs):
     check_ok = comparer.__contains__(Multiple("bbb", 'ccc'))
     assert not check_ok
     assert comparer.messages == [
-        "Multiple ('bbb', 'ccc') not found in DEBUG, all was logged is...",
-        "    DEBUG     'aaa'",
+        "for multiple ('bbb', 'ccc') check in DEBUG failed; logged lines:",
+        "     DEBUG     'aaa'",
     ]
 
 
@@ -171,6 +171,13 @@ def test_basic_avoid_delayed_messaging(logs):
     # now flag the class to explode and check
     exploding.should_explode = True
     assert r"feeling lucky\? didn't explode" in logs.debug
+
+
+def test_reset(logs):
+    logger.debug("foobar")
+    assert "foobar" in logs.debug
+    logs.reset()
+    assert "foobar" not in logs.debug
 
 
 # -- Levels

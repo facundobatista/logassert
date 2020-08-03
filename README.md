@@ -41,6 +41,17 @@ do (in case you're not exactly sure which the meaning of life is):
     assert "The meaning of life is \d+" in logs.debug
 ```
 
+The indicated string is searched to be inside the log lines, it doesn't 
+need to be exact whole line. If you want that, just indicate it as with
+any regular expression:
+
+```python
+    assert "^The meaning of life is \d+$" in logs.debug
+```
+
+In a similar way you can also express the desire to check if it's at the 
+beginning or at the end of the log lines.
+
 > **NOTE**: the message checked is the final one, after the logging system 
 replaced all the indicated parameters in the indicated string.
 
@@ -108,8 +119,8 @@ However, the following will fail (different text!)...
 ...producing this message in your tests:
 
 ```
-Regex 'Excuse me .*?, you lost your wallet' not found in DEBUG, all was logged is...
-    DEBUG     'Excuse me madam, you dropped your wallet'
+assert for regex 'Excuse me .*?, you lost your wallet' check in DEBUG, failed; logged lines:
+      DEBUG     'Excuse me madam, you dropped your wallet'
 ```
 
 This one will also fail (different level!)...
@@ -121,8 +132,8 @@ This one will also fail (different level!)...
 ...producing this message in your tests:
 
 ```
-Regex 'Excuse me .*?, you dropped your wallet' not found in INFO, all was logged is...
-    DEBUG     'Excuse me madam, you dropped your wallet'
+assert for regex 'Excuse me .*?, you dropped your wallet' check in INFO, failed; logged lines:
+       DEBUG     'Excuse me madam, you dropped your wallet'
 ```
 
 A more complex example, with several log lines, and a specific assertion:
@@ -139,11 +150,29 @@ A more complex example, with several log lines, and a specific assertion:
 See how the test failure message is super helpful:
 
 ```
-Regex 'bad config XYZ' not found in DEBUG, all was logged is...
-    INFO      'Starting system'
-    DEBUG     "Checking for config XYZ in all these places ['/tmp/', '~/temp']"
-    WARNING   'bad config XYZ'
+assert for regex 'bad config XYZ' check in DEBUG, failed; logged lines:
+       INFO      'Starting system'
+       DEBUG     "Checking for config XYZ in all these places ['/tmp/', '~/temp']"
+       WARNING   'bad config XYZ'
 
+```
+
+### What about repeated verifications?
+
+Sometimes it's needed to verify that something if logged only once (e.g.
+welcoming messages). In this cases it's super useful to use the `reset`
+method.
+
+See the following test sequence:
+
+```python
+def test_welcoming message(logs):
+    logger.info("foo")  # first log! it should trigger the welcoming message
+    assert "Welcome" in logs.info
+
+    logs.reset()
+    logger.info("foo")  # second log! it should NOT trigger the welcoming message
+    assert "Welcome" not in logs.info
 ```
 
 
