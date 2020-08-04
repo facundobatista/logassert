@@ -17,7 +17,6 @@
 """Tests for the main module when used as a pytest fixture."""
 
 import logging
-import os
 from unittest.mock import patch
 
 import pytest
@@ -229,8 +228,8 @@ def test_levels_assert_different_level_fail_warning_debug(logs):
 def test_as_fixture_basic(testdir, pytestconfig):
     """Make sure that our plugin works."""
     # create a temporary conftest.py file
-    plugin_fpath = os.path.join(pytestconfig.rootdir, 'logassert', 'pytest_plugin.py')
-    with open(plugin_fpath, 'rt', encoding='utf8') as fh:
+    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
+    with plugin_fpath.open('rt', encoding='utf8') as fh:
         testdir.makeconftest(fh.read())
 
     # create a temporary pytest test file
@@ -251,8 +250,8 @@ def test_as_fixture_basic(testdir, pytestconfig):
 def test_as_fixture_double_handler(testdir, pytestconfig):
     """Check that we don't hook many handlers."""
     # create a temporary conftest.py file
-    plugin_fpath = os.path.join(pytestconfig.rootdir, 'logassert', 'pytest_plugin.py')
-    with open(plugin_fpath, 'rt', encoding='utf8') as fh:
+    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
+    with plugin_fpath.open('rt', encoding='utf8') as fh:
         testdir.makeconftest(fh.read())
 
     # create a temporary pytest test file
@@ -287,8 +286,8 @@ def test_as_fixture_double_handler(testdir, pytestconfig):
 def test_as_fixture_no_record_leaking(testdir, pytestconfig):
     """Nothing is leaked between tests."""
     # create a temporary conftest.py file
-    plugin_fpath = os.path.join(pytestconfig.rootdir, 'logassert', 'pytest_plugin.py')
-    with open(plugin_fpath, 'rt', encoding='utf8') as fh:
+    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
+    with plugin_fpath.open('rt', encoding='utf8') as fh:
         testdir.makeconftest(fh.read())
 
     # create a temporary pytest test file

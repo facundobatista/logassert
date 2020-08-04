@@ -45,15 +45,15 @@ class BasicUsageTestCase(unittest.TestCase):
         ftc.assertLogged("test")
         self.assertEqual(ftc.failed, None)
 
-    #def test_simple_assert_ok_extras(self):
-    #    ftc = FakeTestCase()
-    #    logassert.setup(ftc, '')
-    #    formatter = logging.Formatter("%(message)s %(foo)s")
-    #    for h in self.logger.handlers:
-    #        h.setFormatter(formatter)
-    #    self.logger.debug("test", extra={'foo': 'bar'})
-    #    ftc.assertLogged("test bar")
-    #    self.assertEqual(ftc.failed, None)
+    def test_simple_assert_ok_extras(self):
+        ftc = FakeTestCase()
+        logassert.setup(ftc, '')
+        formatter = logging.Formatter("%(message)s %(foo)s")
+        for h in self.logger.handlers:
+            h.setFormatter(formatter)
+        self.logger.debug("test", extra={'foo': 'bar'})
+        ftc.assertLogged("test bar")
+        self.assertEqual(ftc.failed, None)
 
     def test_simple_assert_ok_with_replaces(self):
         ftc = FakeTestCase()
