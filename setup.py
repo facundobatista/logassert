@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2015 Facundo Batista
+# Copyright 2015-2020 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -18,18 +18,58 @@
 
 """Build tar.gz for logassert."""
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='logassert',
-    version='4',
+    version='5',
     license='LGPL-3',
     author='Facundo Batista',
     author_email='facundo@taniquetil.com.ar',
-    description='Log Assertion.',
-    long_description=open('README.rst').read(),
+    description='Simple but powerful assertion and verification of logged lines.',
+    long_description=open('README.md').read(),
     url='https://github.com/facundobatista/logassert',
+
+    # the following makes a plugin available to pytest
+    entry_points={"pytest11": ["logassert = logassert.pytest_plugin"]},
 
     packages=["logassert"],
     install_requires=['setuptools'],
+
+    # https://pypi.python.org/pypi?%3Aaction=list_classifiers
+    classifiers=[
+        'Development Status :: 5 - Production/Stable',
+
+        'Framework :: Pytest',
+
+        'Environment :: Console',
+
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+
+        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+
+        'Natural Language :: English',
+        'Natural Language :: Spanish',
+
+        'Operating System :: MacOS',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: Microsoft',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: POSIX',
+        'Operating System :: POSIX :: Linux',
+
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+
+        'Topic :: Software Development',
+        'Topic :: Utilities',
+    ],
 )

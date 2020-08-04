@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Facundo Batista
+# Copyright 2020 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -14,4 +14,24 @@
 #
 # For further info, check  https://github.com/facundobatista/logassert
 
-from .logassert import setup, Exact, Regex, Multiple  # NOQA (imported but not used)
+"""Integration to be a fixture of pytest."""
+
+from logassert import logassert
+
+import pytest
+
+
+@pytest.fixture()
+def logs(request):
+    """Provide the logassert functionality through a fixture.
+
+    Its scope is "session" so it hooks the log handler only once.
+    """
+    return logassert.FixtureLogChecker()
+
+
+@pytest.hookimpl()
+def pytest_assertrepr_compare(op, left, right):
+    """Hook called by pytest to return the messages to show to the user."""
+    if op == "in" and isinstance(right, logassert.PyTestComparer):
+        return right.messages
