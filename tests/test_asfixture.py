@@ -18,6 +18,7 @@
 
 import logging
 import os
+from unittest.mock import patch
 
 import pytest
 
@@ -35,10 +36,11 @@ def test_basic_simple_assert_ok_simple(logs):
 
 def test_basic_simple_assert_ok_extras(logs):
     formatter = logging.Formatter("%(message)s %(foo)s")
-    for h in logger.handlers:
-        h.setFormatter(formatter)
-    logger.debug("test", extra={'foo': 'bar'})
-    assert "test bar" in logs.any_level
+    with patch.object(logger, 'handlers', logger.handlers[:]):
+        for h in logger.handlers:
+            h.setFormatter(formatter)
+        logger.debug("test", extra={'foo': 'bar'})
+        assert "test bar" in logs.any_level
 
 
 def test_basic_simple_assert_ok_with_replaces(logs):
