@@ -34,7 +34,7 @@ class _StoringHandler(logging.handlers.MemoryHandler):
         # hook in the logger
         logger = logging.getLogger(log_path)
 
-        # ensure we're alone
+        # ensure there are not other _StoringHandlers
         logger.handlers[:] = [h for h in logger.handlers if not isinstance(h, _StoringHandler)]
 
         logger.addHandler(self)

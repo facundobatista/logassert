@@ -17,7 +17,6 @@
 """Tests for the main module when used as a pytest fixture."""
 
 import logging
-from unittest.mock import patch
 
 import pytest
 
@@ -31,15 +30,6 @@ logger = logging.getLogger()
 def test_basic_simple_assert_ok_simple(logs):
     logger.debug("test")
     assert "test" in logs.any_level
-
-
-#def test_basic_simple_assert_ok_extras(logs):
-#    formatter = logging.Formatter("%(message)s %(foo)s")
-#    with patch.object(logger, 'handlers', logger.handlers[:]):
-#        for h in logger.handlers:
-#            h.setFormatter(formatter)
-#        logger.debug("test", extra={'foo': 'bar'})
-#        assert "test bar" in logs.any_level
 
 
 def test_basic_simple_assert_ok_with_replaces(logs):
