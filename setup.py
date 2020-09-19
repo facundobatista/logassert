@@ -28,6 +28,7 @@ setup(
     author_email='facundo@taniquetil.com.ar',
     description='Simple but powerful assertion and verification of logged lines.',
     long_description=open('README.md').read(),
+    long_description_content_type="text/markdown",
     url='https://github.com/facundobatista/logassert',
 
     # the following makes a plugin available to pytest
@@ -35,6 +36,7 @@ setup(
 
     packages=["logassert"],
     install_requires=['setuptools'],
+    python_requires='>=3.5',
 
     # https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
