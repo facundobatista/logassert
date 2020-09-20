@@ -20,7 +20,7 @@ import logging
 
 import pytest
 
-from logassert import Exact, Multiple
+from logassert import Exact, Multiple, Sequence
 
 logger = logging.getLogger()
 
@@ -142,6 +142,66 @@ def test_multiple_failure(logs):
         "for multiple ('bbb', 'ccc') check in DEBUG failed; logged lines:",
         "     DEBUG     'aaa'",
     ]
+
+
+def test_sequence_simple(logs):
+    logger.debug("foo")
+    logger.debug("a1")
+    logger.debug("a2")
+    logger.debug("bar")
+    assert Sequence("a1", "a2") in logs.debug
+
+
+def test_sequence_rotated(logs):
+    logger.debug("a2")
+    logger.debug("a1")
+    comparer = logs.debug
+    check_ok = comparer.__contains__(Sequence("a1", "a2"))
+    assert not check_ok
+    assert comparer.messages == [
+        "for sequence ('a1', 'a2') check in DEBUG failed; logged lines:",
+        "     DEBUG     'a2'",
+        "     DEBUG     'a1'",
+    ]
+
+
+def test_sequence_partial(logs):
+    logger.debug("a1")
+    comparer = logs.debug
+    check_ok = comparer.__contains__(Sequence("a1", "a2"))
+    assert not check_ok
+    assert comparer.messages == [
+        "for sequence ('a1', 'a2') check in DEBUG failed; logged lines:",
+        "     DEBUG     'a1'",
+    ]
+
+
+def test_sequence_interrupted(logs):
+    logger.debug("a1")
+    logger.debug("--")
+    logger.debug("a2")
+    comparer = logs.debug
+    check_ok = comparer.__contains__(Sequence("a1", "a2"))
+    assert not check_ok
+    assert comparer.messages == [
+        "for sequence ('a1', 'a2') check in DEBUG failed; logged lines:",
+        "     DEBUG     'a1'",
+        "     DEBUG     '--'",
+        "     DEBUG     'a2'",
+    ]
+
+
+def test_sequence_inners(logs):
+    logger.debug("foo")
+    logger.debug("xxx a1")
+    logger.debug("xxx a2")
+    logger.debug("xxx a3")
+    logger.debug("bar")
+    assert Sequence(
+        ".* a.",
+        Exact("xxx a2"),
+        Multiple("a3", "xxx"),
+    ) in logs.debug
 
 
 def test_basic_avoid_delayed_messaging(logs):

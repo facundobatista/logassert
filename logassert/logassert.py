@@ -157,46 +157,76 @@ class Multiple(Matcher):
         return all(t in message for t in self.token)
 
 
+class Sequence(Matcher):
+    """A matcher that just holds its inners so each one can be verified separatedly.
+
+    Note it doesn't define a `search` method, as it should never be called.
+    """
+
+    def __init__(self, *tokens):
+        super().__init__(tokens)
+
+
 class PyTestComparer:
     def __init__(self, handler, level=None):
         self.handler = handler
         self.level = level
         self.messages = None
 
-    def __contains__(self, item):
-        # item is not specific, so default to Regex
+    def _get_matcher(self, item):
+        """Produce a real matcher from a specific item."""
         if isinstance(item, str):
-            matcher = Regex(item)
-        elif isinstance(item, Matcher):
-            matcher = item
+            # item is not specific, so default to Regex
+            return Regex(item)
+        if isinstance(item, Matcher):
+            return item
+        raise ValueError("Unknown item type: {!r}".format(item))
+
+    def __contains__(self, item):
+        if isinstance(item, Sequence):
+            matcher_description = str(item)
+            # sequence! all needs to succeed, in order
+            results = []
+            for subitem in item.token:
+                matcher = self._get_matcher(subitem)
+                result = self._check(matcher)
+                if result is None:
+                    # didn't succeed, calling it off
+                    break
+                else:
+                    results.append(result)
+            else:
+                # all went fine... now check if it was in the proper order
+                expected_sequence = list(range(results[0], len(item.token) + 1))
+                if expected_sequence == results:
+                    return True
+
         else:
-            raise ValueError("Unknown item type: {!r}".format(item))
+            # simple matcher, check if it just succeeds
+            matcher = self._get_matcher(item)
+            if self._check(matcher) is not None:
+                return True
+            matcher_description = str(matcher)
 
-        # check and store any given messages to be used when pytest asks for them at the moment
-        # of showing the information to the user
-        self.messages = self._check(matcher, self.level)
+        # build the messages to the user and return False to pytest so
+        # it flags the test as "failed"
+        level_name = logging.getLevelName(self.level)
+        title = "for {} check in {} failed; logged lines:".format(matcher_description, level_name)
+        self.messages = [title]
+        for _, logged_levelname, logged_message in self._get_records():
+            self.messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
+        return False
 
-        # if have messages, return False to pytest so it flags the test as "failed"
-        return not self.messages
+    def _get_records(self):
+        """Get the level number, level name and message from the logged records."""
+        return [(r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]
 
-    def _check(self, matcher, level):
-        """Check if the regex applies to one logged record."""
-        # get the messages with corresponding levels
-        logged_records = [
-            (r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]
-
-        # verify if the matcher is ok with any of the logged levels/messages
-        for logged_level, _, logged_message in logged_records:
-            if logged_level == level or level is None:
+    def _check(self, matcher):
+        """Check if the matcher is ok with any of the logged levels/messages."""
+        for idx, (logged_level, _, logged_message) in enumerate(self._get_records()):
+            if logged_level == self.level or self.level is None:
                 if matcher.search(logged_message):
-                    return
-
-        # didn't match any of the records, so prepare the resulting messages
-        level_name = logging.getLevelName(level)
-        msgs = ["for {} check in {} failed; logged lines:".format(matcher, level_name)]
-        for _, logged_levelname, logged_message in logged_records:
-            msgs.append("     {:9s} {!r}".format(logged_levelname, logged_message))
-        return msgs
+                    return idx
 
 
 class FixtureLogChecker:
