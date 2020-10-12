@@ -217,6 +217,25 @@ class PyTestComparer:
             self.messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
         return False
 
+    def __bool__(self):
+        records = self._get_records()
+        print("===== records", records)
+        for logged_level, _, _ in records:
+            if logged_level == self.level or self.level is None:
+                return True
+
+        # build the messages to the user for pytest to use them
+        if self.level is None:
+            level_name = "any level"
+        else:
+            level_name = logging.getLevelName(self.level)
+        title = "for any logs in {} failed; logged lines:".format(level_name)
+        self.messages = [title]
+        for _, logged_levelname, logged_message in self._get_records():
+            self.messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
+        print("======= msgs", self.messages)
+        return False
+
     def _get_records(self):
         """Get the level number, level name and message from the logged records."""
         return [(r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]

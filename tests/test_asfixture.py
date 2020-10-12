@@ -17,6 +17,9 @@
 """Tests for the main module when used as a pytest fixture."""
 
 import logging
+import shutil
+import subprocess
+import textwrap
 
 import pytest
 
@@ -37,7 +40,7 @@ def test_basic_simple_assert_ok_with_replaces(logs):
     assert "test 65 'foobar'" in logs.any_level
 
 
-def test_basic_simple_negated_assert_(logs):
+def test_basic_simple_negated_assert(logs):
     logger.debug("aaa")
     assert "aaa" not in logs.warning  # different than logged
     assert "bbb" not in logs.any_level  # checking other text in any level
@@ -81,6 +84,33 @@ def test_failure_message_exception(logs):
         "for regex 'will make it fail' check in ERROR failed; logged lines:",
         "     ERROR     'test message'",
     ]
+
+
+def test_bool_behaviour_ok_is_bool(logs):
+    logger.debug("aaa")
+    assert logs.debug is True
+    assert logs.warning is False
+    assert logs.any_level is True
+
+
+#def test_bool_behaviour_message_level(logs):
+#    logger.debug("aaa")
+#    comparer = logs.warning
+#    check_ok = comparer.__bool__()
+#    assert not check_ok
+#    assert comparer.messages == [
+#        "for any logs in WARNING failed; logged lines:",
+#        "     DEBUG     'aaa'",
+#    ]
+#
+#
+#def test_bool_behaviour_message_any(logs):
+#    comparer = logs.any_level
+#    check_ok = comparer.__bool__()
+#    assert not check_ok
+#    assert comparer.messages == [
+#        "for any logs in any level failed; logged lines:",
+#    ]
 
 
 def test_regex_matching_exact(logs):
@@ -275,8 +305,8 @@ def test_levels_assert_different_level_fail_warning_debug(logs):
 
 # -- Usage as a fixture!
 
-def test_as_fixture_basic(testdir, pytestconfig):
-    """Make sure that our plugin works."""
+def test_as_fixture_basic_inclusion(testdir, pytestconfig):
+    """Make sure that our plugin works for the "in" comparison."""
     # create a temporary conftest.py file
     plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
     with plugin_fpath.open('rt', encoding='utf8') as fh:
@@ -297,6 +327,28 @@ def test_as_fixture_basic(testdir, pytestconfig):
     result.assert_outcomes(passed=1)
 
 
+#def test_as_fixture_basic_bool(testdir, pytestconfig):
+#    """Make sure that our plugin works for the "bool" check."""
+#    # create a temporary conftest.py file
+#    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
+#    with plugin_fpath.open('rt', encoding='utf8') as fh:
+#        testdir.makeconftest(fh.read())
+#
+#    # create a temporary pytest test file
+#    testdir.makepyfile(
+#        """
+#        def test_hello_default(logs):
+#            assert logs.any_level
+#    """
+#    )
+#
+#    # run the test with pytest
+#    result = testdir.runpytest()
+#
+#    # check that the test passed
+#    result.assert_outcomes(passed=1)
+#
+#
 def test_as_fixture_double_handler(testdir, pytestconfig):
     """Check that we don't hook many handlers."""
     # create a temporary conftest.py file
@@ -361,3 +413,99 @@ def test_as_fixture_no_record_leaking(testdir, pytestconfig):
 
     # check that the test passed
     result.assert_outcomes(passed=2)
+
+
+# -- Real execution
+
+def _run_external_test(test_code, tmp_path, monkeypatch, pytestconfig):
+    """Run the given text in a specific environment including logassert plugin."""
+    # set up the test file
+    testfile = tmp_path / 't.py'
+    testfile.write_text(textwrap.dedent(test_code))
+
+    # a script to run the tests
+    testexec = tmp_path / 'run_tests'
+    shutil.copy((pytestconfig.rootdir / 'test'), testexec)
+
+    # change dir and run the tests
+    monkeypatch.chdir(tmp_path)
+    env = {'PYTHONPATH': pytestconfig.rootdir}
+    proc = subprocess.run(
+        ['./run_tests', '-vv', 't.py'], env=env, capture_output=True, encoding='utf8')
+    return proc.stdout
+
+
+def test_real_exec_inclusion_ok(tmp_path, monkeypatch, pytestconfig):
+    """Real life execution using logs, with inclusion, successful."""
+    test_code = """
+        def test_from_test(logs):
+            assert "anything" not in logs.any_level
+    """
+    output = _run_external_test(test_code, tmp_path, monkeypatch, pytestconfig)
+    assert "t.py::test_from_test PASSED" in output
+
+
+def test_real_exec_inclusion_failure(tmp_path, monkeypatch, pytestconfig):
+    """Real life execution using logs, with inclusion, fail."""
+    test_code = """
+        def test_from_test(logs):
+            assert "anything" in logs.any_level
+    """
+    output = _run_external_test(test_code, tmp_path, monkeypatch, pytestconfig)
+    assert "t.py::test_from_test FAILED" in output
+    assert "assert for regex 'anything' check in Level None failed; logged lines" in output
+
+
+def test_real_exec_bool_ok(tmp_path, monkeypatch, pytestconfig):
+    """Real life execution using logs, with bool, successful."""
+    test_code = """
+        import logging
+        logger = logging.getLogger()
+
+        def test_from_test(logs):
+            logger.info("something")
+            assert logs.any_level is True
+    """
+    output = _run_external_test(test_code, tmp_path, monkeypatch, pytestconfig)
+    assert "t.py::test_from_test PASSED" in output
+
+
+def test_real_exec_bool_failure_any(tmp_path, monkeypatch, pytestconfig):
+    """Real life execution using logs, with bool on any, fail."""
+    test_code = """
+        def test_from_test(logs):
+            assert logs.any_level is True
+    """
+    output = _run_external_test(test_code, tmp_path, monkeypatch, pytestconfig)
+    #print("============ output")
+    #for x in output.split("\n"):
+    #    print("--x", repr(x))
+    assert "t.py::test_from_test FAILED" in output
+    assert "assert for any logs in any level failed; logged lines" in output
+
+
+def test_real_exec_bool_failure_level(tmp_path, monkeypatch, pytestconfig):
+    """Real life execution using logs, with bool on a specific level, fail."""
+    test_code = """
+        import logging
+        logger = logging.getLogger()
+
+        def test_from_test(logs):
+            logger.info("something")
+            assert logs.debug is True
+    """
+    output = _run_external_test(test_code, tmp_path, monkeypatch, pytestconfig)
+    #print("============ output")
+    #for x in output.split("\n"):
+    #    print("--x", repr(x))
+    assert "t.py::test_from_test FAILED" in output
+    assert "assert for any logs in DEBUG level failed; logged lines" in output
+
+
+def test_fixme(logs):
+    logger.warning("test")
+
+    with pytest.raises(AssertionError) as err:
+        assert logs.warning is True
+
+    print("========= rRRR\n", err.value)

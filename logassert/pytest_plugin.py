@@ -33,5 +33,9 @@ def logs(request):
 @pytest.hookimpl()
 def pytest_assertrepr_compare(op, left, right):
     """Hook called by pytest to return the messages to show to the user."""
+    print("======== plug", op, left, right)
+    #import pdb;pdb.set_trace()
     if op == "in" and isinstance(right, logassert.PyTestComparer):
         return right.messages
+    if op == "is" and isinstance(left, logassert.PyTestComparer):
+        return left.messages
