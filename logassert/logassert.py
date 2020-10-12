@@ -161,42 +161,46 @@ class PyTestComparer:
     def __init__(self, handler, level=None):
         self.handler = handler
         self.level = level
-        self.messages = None
+        self.matcher = None
 
     def __contains__(self, item):
         # item is not specific, so default to Regex
         if isinstance(item, str):
-            matcher = Regex(item)
+            self.matcher = Regex(item)
         elif isinstance(item, Matcher):
-            matcher = item
+            self.matcher = item
         else:
             raise ValueError("Unknown item type: {!r}".format(item))
 
         # check and store any given messages to be used when pytest asks for them at the moment
         # of showing the information to the user
-        self.messages = self._check(matcher, self.level)
+        return self._check()
 
-        # if have messages, return False to pytest so it flags the test as "failed"
-        return not self.messages
+    @property
+    def messages(self):
+        """Get all the messages in this log, to show when an assert fails."""
+        level_name = logging.getLevelName(self.level)
+        messages = ["for {} check in {} failed; logged lines:".format(self.matcher, level_name)]
+        for _, logged_levelname, logged_message in self.logged_records:
+            messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
+        return messages
 
-    def _check(self, matcher, level):
+    @property
+    def logged_records(self):
+        """Get the messages with corresponding levels."""
+        return [(r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]
+
+    def _check(self):
         """Check if the regex applies to one logged record."""
-        # get the messages with corresponding levels
-        logged_records = [
-            (r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]
-
         # verify if the matcher is ok with any of the logged levels/messages
-        for logged_level, _, logged_message in logged_records:
-            if logged_level == level or level is None:
-                if matcher.search(logged_message):
-                    return
+        for logged_level, _, logged_message in self.logged_records:
+            if logged_level == self.level or self.level is None:
+                if self.matcher.search(logged_message):
+                    return True
+        return False
 
-        # didn't match any of the records, so prepare the resulting messages
-        level_name = logging.getLevelName(level)
-        msgs = ["for {} check in {} failed; logged lines:".format(matcher, level_name)]
-        for _, logged_levelname, logged_message in logged_records:
-            msgs.append("     {:9s} {!r}".format(logged_levelname, logged_message))
-        return msgs
+    def assert_is_empty(self):
+        assert '.' not in self, "Log is not empty."
 
 
 class FixtureLogChecker:

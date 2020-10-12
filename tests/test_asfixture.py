@@ -301,3 +301,31 @@ def test_as_fixture_no_record_leaking(testdir, pytestconfig):
 
     # check that the test passed
     result.assert_outcomes(passed=2)
+
+
+def test_lgged_lines_are_shown_when_unsing_not_in(logs):
+    logger.error("foo")
+    with pytest.raises(AssertionError) as err:
+        assert "foo" not in logs.error
+
+    expected_log = ("assert for regex 'foo' check in ERROR failed; logged lines:\n"
+                    "       ERROR     'foo'")
+
+    assert expected_log == str(err.value)
+
+
+def test_log_is_empty(logs):
+    logger.warning("foo")
+    logger.debug("bar")
+
+    with pytest.raises(AssertionError) as err:
+        logs.warning.assert_is_empty()
+
+    expected_log = ("Log is not empty.\n"
+                    "assert for regex '.' check in WARNING failed; logged lines:\n"
+                    "       WARNING   'foo'\n"
+                    "       DEBUG     'bar'")
+
+    assert expected_log == str(err.value)
+
+    logs.error.assert_is_empty()
