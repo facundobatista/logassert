@@ -94,6 +94,25 @@ For example:
 ```
 
 
+### Breaking the "per line barrier"
+
+Sometimes it's useful to verify that several lines were logged, and that 
+those lines are logged one after the other, as they build a "composite 
+message".
+
+To achieve that control on the logged lines you can use the `Sequence`
+helper, that receives all the lines to verify (regexes by default, but
+you can use the other helpers there):
+
+```python
+    assert Sequence(
+        "Got 2 errors and \d+ warnings:",
+        Exact("  error 1: foo"),
+        Exact("  error 2: bar"),
+    ) in logs.debug
+```    
+
+
 ### Examples
 
 After logging...
