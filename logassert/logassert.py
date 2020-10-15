@@ -199,9 +199,6 @@ class PyTestComparer:
                     return True
         return False
 
-    def assert_is_empty(self):
-        assert '.' not in self, "Log is not empty."
-
 
 class FixtureLogChecker:
     """A version of the LogChecker to use as a pytest fixture."""

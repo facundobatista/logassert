@@ -1,3 +1,4 @@
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -58,3 +59,6 @@ target/
 
 # Own stuff
 MANIFEST
+
+# PyCharm
+.idea/

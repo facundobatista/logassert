@@ -312,20 +312,3 @@ def test_lgged_lines_are_shown_when_unsing_not_in(logs):
                     "       ERROR     'foo'")
 
     assert expected_log == str(err.value)
-
-
-def test_log_is_empty(logs):
-    logger.warning("foo")
-    logger.debug("bar")
-
-    with pytest.raises(AssertionError) as err:
-        logs.warning.assert_is_empty()
-
-    expected_log = ("Log is not empty.\n"
-                    "assert for regex '.' check in WARNING failed; logged lines:\n"
-                    "       WARNING   'foo'\n"
-                    "       DEBUG     'bar'")
-
-    assert expected_log == str(err.value)
-
-    logs.error.assert_is_empty()
