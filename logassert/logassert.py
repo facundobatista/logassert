@@ -171,7 +171,7 @@ class PyTestComparer:
     def __init__(self, handler, level=None):
         self.handler = handler
         self.level = level
-        self.messages = None
+        self._matcher_description = ""
 
     def _get_matcher(self, item):
         """Produce a real matcher from a specific item."""
@@ -184,7 +184,7 @@ class PyTestComparer:
 
     def __contains__(self, item):
         if isinstance(item, Sequence):
-            matcher_description = str(item)
+            self._matcher_description = str(item)
             # sequence! all needs to succeed, in order
             results = []
             for subitem in item.token:
@@ -204,18 +204,21 @@ class PyTestComparer:
         else:
             # simple matcher, check if it just succeeds
             matcher = self._get_matcher(item)
+            self._matcher_description = str(matcher)
             if self._check(matcher) is not None:
                 return True
-            matcher_description = str(matcher)
-
-        # build the messages to the user and return False to pytest so
-        # it flags the test as "failed"
-        level_name = logging.getLevelName(self.level)
-        title = "for {} check in {} failed; logged lines:".format(matcher_description, level_name)
-        self.messages = [title]
-        for _, logged_levelname, logged_message in self._get_records():
-            self.messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
         return False
+
+    @property
+    def messages(self):
+        """Get all the messages in this log, to show when an assert fails."""
+        level_name = logging.getLevelName(self.level)
+        title = "for {} check in {} failed; logged lines:".format(self._matcher_description,
+                                                                  level_name)
+        messages = [title]
+        for _, logged_levelname, logged_message in self._get_records():
+            messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
+        return messages
 
     def _get_records(self):
         """Get the level number, level name and message from the logged records."""

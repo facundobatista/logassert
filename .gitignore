@@ -58,3 +58,6 @@ target/
 
 # Own stuff
 MANIFEST
+
+# PyCharm
+.idea/
