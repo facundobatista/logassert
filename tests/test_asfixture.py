@@ -361,3 +361,14 @@ def test_as_fixture_no_record_leaking(testdir, pytestconfig):
 
     # check that the test passed
     result.assert_outcomes(passed=2)
+
+
+def test_lgged_lines_are_shown_when_unsing_not_in(logs):
+    logger.error("foo")
+    with pytest.raises(AssertionError) as err:
+        assert "foo" not in logs.error
+
+    expected_log = ("assert for regex 'foo' check in ERROR failed; logged lines:\n"
+                    "       ERROR     'foo'")
+
+    assert expected_log == str(err.value)
