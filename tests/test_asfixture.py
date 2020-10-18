@@ -44,28 +44,28 @@ def test_basic_simple_negated_assert_(logs):
     assert "bbb" not in logs.debug  # checking other text in same level
 
 
+# -- messages
+
 def test_failure_message_simple(logs):
     logger.debug("aaa")
-    comparer = logs.debug
-    check_ok = comparer.__contains__("bbb")
-    assert not check_ok
-    assert comparer.messages == [
-        "for regex 'bbb' check in DEBUG failed; logged lines:",
-        "     DEBUG     'aaa'",
-    ]
+    with pytest.raises(AssertionError) as err:
+        assert "bbb" in logs.debug
+    assert str(err.value) == (
+        "assert for regex 'bbb' check in DEBUG failed; logged lines:\n"
+        "       DEBUG     'aaa'"
+    )
 
 
 def test_failure_message_multiple(logs):
     logger.debug("aaa")
     logger.warning("bbb")
-    comparer = logs.debug
-    check_ok = comparer.__contains__("bbb")
-    assert not check_ok
-    assert comparer.messages == [
-        "for regex 'bbb' check in DEBUG failed; logged lines:",
-        "     DEBUG     'aaa'",
-        "     WARNING   'bbb'",
-    ]
+    with pytest.raises(AssertionError) as err:
+        assert "bbb" in logs.debug
+    assert str(err.value) == (
+        "assert for regex 'bbb' check in DEBUG failed; logged lines:\n"
+        "       DEBUG     'aaa'\n"
+        "       WARNING   'bbb'"
+    )
 
 
 def test_failure_message_exception(logs):
@@ -74,14 +74,15 @@ def test_failure_message_exception(logs):
     except ValueError:
         logger.exception("test message")
 
-    comparer = logs.error
-    check_ok = comparer.__contains__("will make it fail")
-    assert not check_ok
-    assert comparer.messages == [
-        "for regex 'will make it fail' check in ERROR failed; logged lines:",
-        "     ERROR     'test message'",
-    ]
+    with pytest.raises(AssertionError) as err:
+        assert "will make it fail" in logs.error
+    assert str(err.value) == (
+        "assert for regex 'will make it fail' check in ERROR failed; logged lines:\n"
+        "       ERROR     'test message'"
+    )
 
+
+# -- different forms of comparison
 
 def test_regex_matching_exact(logs):
     logger.debug("foo 42")
@@ -363,7 +364,7 @@ def test_as_fixture_no_record_leaking(testdir, pytestconfig):
     result.assert_outcomes(passed=2)
 
 
-def test_lgged_lines_are_shown_when_unsing_not_in(logs):
+def test_logged_lines_are_shown_when_using_not_in(logs):
     logger.error("foo")
     with pytest.raises(AssertionError) as err:
         assert "foo" not in logs.error
