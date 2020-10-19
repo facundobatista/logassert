@@ -20,7 +20,7 @@ import logging
 
 import pytest
 
-from logassert import Exact, Multiple, Sequence
+from logassert import Exact, Multiple, Sequence, NOTHING
 
 logger = logging.getLogger()
 
@@ -372,3 +372,25 @@ def test_lgged_lines_are_shown_when_unsing_not_in(logs):
                     "       ERROR     'foo'")
 
     assert expected_log == str(err.value)
+
+
+def test_use_of_NOTHING(logs):
+
+    assert NOTHING in logs.any_level
+
+    logger.debug("foo")
+    logger.info("bar")
+
+    assert NOTHING in logs.error
+
+    with pytest.raises(AssertionError) as err:
+        assert NOTHING in logs.debug
+
+    expected_log = ("assert for NOTHING check in DEBUG failed; logged lines:\n"
+                    "       DEBUG     'foo'\n"
+                    "       INFO      'bar'")
+
+    assert expected_log == str(err.value)
+
+    with pytest.raises(NotImplementedError):
+        NOTHING()

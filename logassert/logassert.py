@@ -167,6 +167,16 @@ class Sequence(Matcher):
         super().__init__(tokens)
 
 
+class NOTHING:
+    """An identifier useful to match for an emtpy logs.
+
+    e.g.: assert NOTHING in logs.debug.
+    """
+
+    def __init__(self):
+        raise NotImplementedError("NOTHING is used only as a class.")
+
+
 class PyTestComparer:
     def __init__(self, handler, level=None):
         self.handler = handler
@@ -178,7 +188,7 @@ class PyTestComparer:
         if isinstance(item, str):
             # item is not specific, so default to Regex
             return Regex(item)
-        if isinstance(item, Matcher):
+        if isinstance(item, Matcher) or item is NOTHING:
             return item
         raise ValueError("Unknown item type: {!r}".format(item))
 
@@ -200,7 +210,9 @@ class PyTestComparer:
                 expected_sequence = list(range(results[0], len(item.token) + 1))
                 if expected_sequence == results:
                     return True
-
+        elif item is NOTHING:
+            self._matcher_description = "NOTHING"
+            return len(self._get_records(self.level)) == 0
         else:
             # simple matcher, check if it just succeeds
             matcher = self._get_matcher(item)
@@ -216,20 +228,21 @@ class PyTestComparer:
         title = "for {} check in {} failed; logged lines:".format(self._matcher_description,
                                                                   level_name)
         messages = [title]
-        for _, logged_levelname, logged_message in self._get_records():
+        for _, logged_levelname, logged_message in self._get_records(logged_level=None):
             messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
         return messages
 
-    def _get_records(self):
+    def _get_records(self, logged_level):
         """Get the level number, level name and message from the logged records."""
-        return [(r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]
+
+        return [(r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records if
+                logged_level in (None, r.levelno)]
 
     def _check(self, matcher):
         """Check if the matcher is ok with any of the logged levels/messages."""
-        for idx, (logged_level, _, logged_message) in enumerate(self._get_records()):
-            if logged_level == self.level or self.level is None:
-                if matcher.search(logged_message):
-                    return idx
+        for idx, (logged_level, _, logged_message) in enumerate(self._get_records(self.level)):
+            if matcher.search(logged_message):
+                return idx
 
 
 class FixtureLogChecker:
