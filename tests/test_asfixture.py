@@ -44,6 +44,13 @@ def test_basic_simple_negated_assert_(logs):
     assert "bbb" not in logs.debug  # checking other text in same level
 
 
+def test_reset(logs):
+    logger.debug("foobar")
+    assert "foobar" in logs.debug
+    logs.reset()
+    assert "foobar" not in logs.debug
+
+
 # -- messages
 
 def test_failure_message_simple(logs):
@@ -53,6 +60,14 @@ def test_failure_message_simple(logs):
     assert str(err.value) == (
         "assert for regex 'bbb' check in DEBUG failed; logged lines:\n"
         "       DEBUG     'aaa'"
+    )
+
+
+def test_failure_message_no_logs(logs):
+    with pytest.raises(AssertionError) as err:
+        assert "bbb" in logs.debug
+    assert str(err.value) == (
+        "assert for regex 'bbb' check in DEBUG failed; no logged lines at all!"
     )
 
 
@@ -223,13 +238,6 @@ def test_basic_avoid_delayed_messaging(logs):
     # now flag the class to explode and check
     exploding.should_explode = True
     assert r"feeling lucky\? didn't explode" in logs.debug
-
-
-def test_reset(logs):
-    logger.debug("foobar")
-    assert "foobar" in logs.debug
-    logs.reset()
-    assert "foobar" not in logs.debug
 
 
 # -- Levels

@@ -213,10 +213,16 @@ class PyTestComparer:
     def messages(self):
         """Get all the messages in this log, to show when an assert fails."""
         level_name = logging.getLevelName(self.level)
-        title = "for {} check in {} failed; logged lines:".format(
-            self._matcher_description, level_name)
+        records = self._get_records()
+        if records:
+            title = "for {} check in {} failed; logged lines:".format(
+                self._matcher_description, level_name)
+        else:
+            title = "for {} check in {} failed; no logged lines at all!".format(
+                self._matcher_description, level_name)
+
         messages = [title]
-        for _, logged_levelname, logged_message in self._get_records():
+        for _, logged_levelname, logged_message in records:
             messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
         return messages
 
