@@ -94,6 +94,20 @@ For example:
 ```
 
 
+### What if I want to check that nothing was logged?
+
+The simplest way to do it is to use the `NOTHING` verifier that you can 
+import from `logassert`:
+
+```python
+    assert NOTHING in logs.debug
+```
+
+Note that it doesn't make sense to use it by the negative (`...NOTHING not in logs...`): 
+is no really useful at testing level to know that "something was logged", you should
+improve the test to specifically verify *what* was logged.
+
+
 ### Breaking the "per line barrier"
 
 Sometimes it's useful to verify that several lines were logged, and that 

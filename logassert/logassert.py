@@ -116,6 +116,8 @@ class SetupLogChecker:
 
 class Matcher:
     """A generic matcher."""
+    default_response = None
+
     def __init__(self, token):
         self.token = token
 
@@ -124,7 +126,7 @@ class Matcher:
         raise NotImplementedError()
 
     def __str__(self):
-        return "{} {!r}".format(self.__class__.__name__.lower(), self.token)
+        return "{} {!r} check".format(self.__class__.__name__.lower(), self.token)
 
 
 class Regex(Matcher):
@@ -165,6 +167,23 @@ class Sequence(Matcher):
 
     def __init__(self, *tokens):
         super().__init__(tokens)
+
+
+class _Nothing(Matcher):
+    """A matcher that is succesful only if nothing was logged."""
+    default_response = True
+
+    def search(self, message):
+        """If a message was given, it implies "something was logged"."""
+        # as a message happened, change the final default response
+        self.default_response = None
+        return False
+
+    def __str__(self):
+        return 'nothing'
+
+
+NOTHING = _Nothing(None)
 
 
 class PyTestComparer:
@@ -212,13 +231,16 @@ class PyTestComparer:
     @property
     def messages(self):
         """Get all the messages in this log, to show when an assert fails."""
-        level_name = logging.getLevelName(self.level)
+        if self.level is None:
+            level_name = "any level"
+        else:
+            level_name = logging.getLevelName(self.level)
         records = self._get_records()
         if records:
-            title = "for {} check in {} failed; logged lines:".format(
+            title = "for {} in {} failed; logged lines:".format(
                 self._matcher_description, level_name)
         else:
-            title = "for {} check in {} failed; no logged lines at all!".format(
+            title = "for {} in {} failed; no logged lines at all!".format(
                 self._matcher_description, level_name)
 
         messages = [title]
@@ -236,6 +258,7 @@ class PyTestComparer:
             if logged_level == self.level or self.level is None:
                 if matcher.search(logged_message):
                     return idx
+        return matcher.default_response
 
 
 class FixtureLogChecker:
