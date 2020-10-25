@@ -20,7 +20,7 @@ import logging
 
 import pytest
 
-from logassert import Exact, Multiple, Sequence
+from logassert import Exact, Multiple, Sequence, NOTHING
 
 logger = logging.getLogger()
 
@@ -68,6 +68,16 @@ def test_failure_message_no_logs(logs):
         assert "bbb" in logs.debug
     assert str(err.value) == (
         "assert for regex 'bbb' check in DEBUG failed; no logged lines at all!"
+    )
+
+
+def test_failure_message_any_level(logs):
+    logger.debug("aaa")
+    with pytest.raises(AssertionError) as err:
+        assert "bbb" in logs.any_level
+    assert str(err.value) == (
+        "assert for regex 'bbb' check in any level failed; logged lines:\n"
+        "       DEBUG     'aaa'"
     )
 
 
@@ -238,6 +248,31 @@ def test_basic_avoid_delayed_messaging(logs):
     # now flag the class to explode and check
     exploding.should_explode = True
     assert r"feeling lucky\? didn't explode" in logs.debug
+
+
+def test_nothing_ok(logs):
+    logger.debug("aaa")
+    assert NOTHING in logs.warning
+
+
+def test_nothing_fail_level(logs):
+    logger.debug("aaa")
+    with pytest.raises(AssertionError) as err:
+        assert NOTHING in logs.debug
+    assert str(err.value) == (
+        "assert for nothing in DEBUG failed; logged lines:\n"
+        "       DEBUG     'aaa'"
+    )
+
+
+def test_nothing_fail_any(logs):
+    logger.debug("aaa")
+    with pytest.raises(AssertionError) as err:
+        assert NOTHING in logs.any_level
+    assert str(err.value) == (
+        "assert for nothing in any level failed; logged lines:\n"
+        "       DEBUG     'aaa'"
+    )
 
 
 # -- Levels
