@@ -22,7 +22,7 @@ from setuptools import setup
 
 setup(
     name='logassert',
-    version='6',
+    version='7',
     license='LGPL-3',
     author='Facundo Batista',
     author_email='facundo@taniquetil.com.ar',
