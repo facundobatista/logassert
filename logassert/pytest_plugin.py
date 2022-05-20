@@ -1,4 +1,4 @@
-# Copyright 2020 Facundo Batista
+# Copyright 2020-2022 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -27,7 +27,9 @@ def logs(request):
 
     Its scope is "session" so it hooks the log handler only once.
     """
-    return logassert.FixtureLogChecker()
+    flc = logassert.FixtureLogChecker()
+    yield flc
+    flc.teardown()
 
 
 @pytest.hookimpl()

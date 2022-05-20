@@ -1,4 +1,4 @@
-# Copyright 2020 Facundo Batista
+# Copyright 2020-2022 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -375,6 +375,45 @@ def test_as_fixture_double_handler(testdir, pytestconfig):
 
     # check that the test passed
     result.assert_outcomes(passed=2)
+
+
+def test_as_fixture_clean_up(testdir, pytestconfig):
+    """Don't leave traces of setup."""
+    # create a temporary conftest.py file
+    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
+    with plugin_fpath.open('rt', encoding='utf8') as fh:
+        testdir.makeconftest(fh.read())
+
+    # create a temporary pytest test file
+    testdir.makepyfile(
+        """
+        import logging
+
+        import pytest
+
+        from logassert import logassert
+
+        logger = logging.getLogger('')
+        logger.setLevel(30)
+
+        def test_1(logs):
+            logger.debug('test')
+            assert "test" in logs.any_level
+
+        @pytest.fixture(scope="session", autouse=True)
+        def cleanup(request):
+            assert logger.getEffectiveLevel() == 30
+            assert len(
+                [h for h in logger.handlers if isinstance(h, logassert._StoringHandler)]) == 0
+    """
+    )
+
+    # run the test with pytest
+    result = testdir.runpytest()
+    print('\n'.join(result.stdout.lines))
+
+    # check that the test passed
+    result.assert_outcomes(passed=1)
 
 
 def test_as_fixture_no_record_leaking(testdir, pytestconfig):

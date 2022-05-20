@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Facundo Batista
+# Copyright 2015-2022 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -31,18 +31,29 @@ class _StoringHandler(logging.handlers.MemoryHandler):
         # init memory handler to never flush
         super().__init__(capacity=100000, flushLevel=1000)
 
-        # hook in the logger
-        logger = logging.getLogger(log_path)
+        # hook in the logger and set level
+        self.logger = logger = logging.getLogger(log_path)
+        self.original_logger_level = logger.level
+        logger.setLevel(logging.DEBUG)
 
         # ensure there are not other _StoringHandlers
         logger.handlers[:] = [h for h in logger.handlers if not isinstance(h, _StoringHandler)]
 
         logger.addHandler(self)
-        logger.setLevel(logging.DEBUG)
         self.setLevel(logging.DEBUG)
 
         # hold a kind of record with the message already composed
         self.records = []
+
+    def teardown(self):
+        """Remove self from logger and set it up to the original level."""
+        self.logger.handlers[:] = [
+            h for h in self.logger.handlers if not isinstance(h, _StoringHandler)]
+        self.logger.setLevel(self.original_logger_level)
+
+    def reset(self):
+        """Clean the stored records."""
+        self.records.clear()
 
     def emit(self, record):
         """Store the message, not only the record.
@@ -278,8 +289,8 @@ class FixtureLogChecker:
 
     def __getattribute__(self, name):
         handler = object.__getattribute__(self, 'handler')
-        if name == 'reset':
-            return handler.records.clear
+        if name in ('reset', 'teardown'):
+            return getattr(handler, name)
 
         # this is handled dinamically so we don't need to create a bunch of PyTestComparares
         # for every test, specially because most of them won't be used in that test
