@@ -364,8 +364,8 @@ def test_as_fixture_double_handler(testdir, pytestconfig):
         def test_2(logs):
             logger.debug('test')
             assert "test" in logs.debug
-            assert len(
-                [h for h in logger.handlers if isinstance(h, logassert._StoringHandler)]) == 1
+            hdlrs = [h for h in logger.handlers if isinstance(h, logassert._StdlibStoringHandler)]
+            assert len(hdlrs) == 1
     """
     )
 
@@ -403,8 +403,8 @@ def test_as_fixture_clean_up(testdir, pytestconfig):
         @pytest.fixture(scope="session", autouse=True)
         def cleanup(request):
             assert logger.getEffectiveLevel() == 30
-            assert len(
-                [h for h in logger.handlers if isinstance(h, logassert._StoringHandler)]) == 0
+            hdlrs = [h for h in logger.handlers if isinstance(h, logassert._StdlibStoringHandler)]
+            assert len(hdlrs) == 0
     """
     )
 

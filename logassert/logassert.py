@@ -1,4 +1,4 @@
-# Copyright 2015-2022 Facundo Batista
+# Copyright 2015-2024 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -21,10 +21,16 @@ import functools
 import logging.handlers
 import re
 
+try:
+    import structlog
+except ImportError:
+    # no structlog library present
+    structlog = None
+
 Record = collections.namedtuple("Record", "levelname levelno message")
 
 
-class _StoringHandler(logging.handlers.MemoryHandler):
+class _StdlibStoringHandler(logging.handlers.MemoryHandler):
     """A fake handler to store the records."""
 
     def __init__(self, log_path):
@@ -37,7 +43,7 @@ class _StoringHandler(logging.handlers.MemoryHandler):
         logger.setLevel(logging.DEBUG)
 
         # ensure there are not other _StoringHandlers
-        logger.handlers[:] = [h for h in logger.handlers if not isinstance(h, _StoringHandler)]
+        logger.handlers[:] = [h for h in logger.handlers if not isinstance(h, _StdlibStoringHandler)]
 
         logger.addHandler(self)
         self.setLevel(logging.DEBUG)
@@ -48,7 +54,7 @@ class _StoringHandler(logging.handlers.MemoryHandler):
     def teardown(self):
         """Remove self from logger and set it up to the original level."""
         self.logger.handlers[:] = [
-            h for h in self.logger.handlers if not isinstance(h, _StoringHandler)]
+            h for h in self.logger.handlers if not isinstance(h, _StdlibStoringHandler)]
         self.logger.setLevel(self.original_logger_level)
 
     def reset(self):
@@ -65,11 +71,50 @@ class _StoringHandler(logging.handlers.MemoryHandler):
         return super().emit(record)
 
 
+class _StructlogCapturer:
+    """A layer above structlog functionality to store the records."""
+
+    def __init__(self):
+        structlog.configure(logger_factory=lambda: self, processors=[self.capture])
+        self.records = []
+
+    def teardown(self):
+        """Noop for structlog."""
+
+    def reset(self):
+        """Clean the stored records."""
+        self.records.clear()
+
+    def capture(self, logger, levelname, event_dict):
+        """Capture the info from structlog."""
+        print("============ CP __y", (levelname, event_dict))
+        levelno = getattr(logging, levelname.upper())
+        r = Record(levelno=levelno, levelname=levelname, message=event_dict["event"]) # FIXME: full!!
+        self.records.append(r)
+        return event_dict
+
+    def __getattr__(self, name):
+        """
+        Capture call to `calls`
+        """
+        if name in ("teardown", "reset"):
+            return object.__getattr__(self, name)
+
+        def capture(*args, **kw) -> None:
+            pass
+            #print("========== capture!!!", name, args, kw)
+            #levelno = getattr(logging, name.upper())
+            #breakpoint()
+            #r = Record(levelno=levelno, levelname=name, message=self.format(record))
+            #self.records.append(r)
+
+        return capture
+
 class SetupLogChecker:
     """A version of the LogChecker to use in classic TestCases."""
 
     def __init__(self, test_instance, log_path):
-        self._log_checker = _StoringHandler(log_path)
+        self._log_checker = _StdlibStoringHandler(log_path)
 
         # fix TestCase instance with all classic-looking helpers
         self.test_instance = test_instance
@@ -198,10 +243,10 @@ NOTHING = _Nothing(None)
 
 
 class PyTestComparer:
-    def __init__(self, handler, level=None):
-        self.handler = handler
+    def __init__(self, handlers, level=None):
         self.level = level
         self._matcher_description = ""
+        self.records = self._get_records(handlers)
 
     def _get_matcher(self, item):
         """Produce a real matcher from a specific item."""
@@ -246,8 +291,7 @@ class PyTestComparer:
             level_name = "any level"
         else:
             level_name = logging.getLevelName(self.level)
-        records = self._get_records()
-        if records:
+        if self.records:
             title = "for {} in {} failed; logged lines:".format(
                 self._matcher_description, level_name)
         else:
@@ -255,17 +299,24 @@ class PyTestComparer:
                 self._matcher_description, level_name)
 
         messages = [title]
-        for _, logged_levelname, logged_message in records:
+        for _, logged_levelname, logged_message in self.records:
             messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
         return messages
 
-    def _get_records(self):
-        """Get the level number, level name and message from the logged records."""
-        return [(r.levelno, r.levelname, r.message.split('\n')[0]) for r in self.handler.records]
+    def _get_records(self, handlers):
+        """Get the record objects from the logged data in the first handler that got it."""
+        for handler in handlers:
+            if handler.records:
+                processed = [
+                    (r.levelno, r.levelname, r.message.split('\n')[0])
+                    for r in handler.records
+                ]
+                return processed
+        return []
 
     def _check(self, matcher):
         """Check if the matcher is ok with any of the logged levels/messages."""
-        for idx, (logged_level, _, logged_message) in enumerate(self._get_records()):
+        for idx, (logged_level, _, logged_message) in enumerate(self.records):
             if logged_level == self.level or self.level is None:
                 if matcher.search(logged_message):
                     return idx
@@ -285,12 +336,25 @@ class FixtureLogChecker:
     }
 
     def __init__(self):
-        self.handler = _StoringHandler('')
+        self.handlers = [_StdlibStoringHandler('')]
+        if structlog is not None:
+            sc = _StructlogCapturer()
+            self.handlers.append(sc)
+
+    def reset(self):
+        """Reset all handlers."""
+        for handler in self.handlers:
+            handler.reset()
+
+    def teardown(self):
+        """Teardown all handlers."""
+        for handler in self.handlers:
+            handler.teardown()
 
     def __getattribute__(self, name):
-        handler = object.__getattribute__(self, 'handler')
-        if name in ('reset', 'teardown'):
-            return getattr(handler, name)
+        #breakpoint()
+        if name in ("handlers", "reset", "teardown"):
+            return object.__getattribute__(self, name)
 
         # this is handled dinamically so we don't need to create a bunch of PyTestComparares
         # for every test, specially because most of them won't be used in that test
@@ -300,7 +364,7 @@ class FixtureLogChecker:
         except KeyError:
             raise AttributeError("'FixtureLogChecker' object has no attribute {!r}".format(name))
 
-        return PyTestComparer(handler, level)
+        return PyTestComparer(self.handlers, level)
 
 
 def setup(test_instance, logger_name):
