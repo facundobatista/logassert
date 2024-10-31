@@ -16,7 +16,6 @@
 
 """Main module."""
 
-import collections
 import functools
 import logging.handlers
 import re
@@ -27,7 +26,49 @@ except ImportError:
     # no structlog library present
     structlog = None
 
-Record = collections.namedtuple("Record", "levelname levelno message")
+MISSING_MARK = object()
+
+
+class SimpleRecord:
+    """A record with simply level name and number, and just a string message."""
+
+    def __init__(self, *, levelname, levelno, message):
+        self.levelname = levelname
+        self.levelno = levelno
+        self.message = message
+        self.extra_fields = None
+
+    @property
+    def repr_content(self):
+        """Representation of the content to show in messages."""
+        return repr(self.message)
+
+    def __str__(self):
+        return f"<SimpleRecord [{self.levelname}] {self.message!r}>"
+
+
+class StructRecord:
+    """A record with level name and number, and info structured in different fields."""
+
+    def __init__(self, *, levelname, levelno, event_dict):
+        self.levelname = levelname
+        self.levelno = levelno
+
+        # copy to not risk modifying an object the user/structlog relies on, and prepare info
+        data = event_dict.copy()
+        self.message = data.pop("event")
+        self.extra_fields = data
+
+    @property
+    def repr_content(self):
+        """Representation of the content to show in messages."""
+        result = repr(self.message)
+        if self.extra_fields:
+            result += f" {self.extra_fields}"
+        return result
+
+    def __str__(self):
+        return f"<StructRecord [{self.levelname}] {self.message!r} {self.extra_fields}>"
 
 
 class _StdlibStoringHandler(logging.handlers.MemoryHandler):
@@ -43,7 +84,9 @@ class _StdlibStoringHandler(logging.handlers.MemoryHandler):
         logger.setLevel(logging.DEBUG)
 
         # ensure there are not other _StoringHandlers
-        logger.handlers[:] = [h for h in logger.handlers if not isinstance(h, _StdlibStoringHandler)]
+        logger.handlers[:] = [
+            h for h in logger.handlers if not isinstance(h, _StdlibStoringHandler)
+        ]
 
         logger.addHandler(self)
         self.setLevel(logging.DEBUG)
@@ -66,7 +109,11 @@ class _StdlibStoringHandler(logging.handlers.MemoryHandler):
 
         Here is where we get in the middle of the logging machinery to capture messages.
         """
-        r = Record(levelno=record.levelno, levelname=record.levelname, message=self.format(record))
+        r = SimpleRecord(
+            levelno=record.levelno,
+            levelname=record.levelname,
+            message=self.format(record),
+        )
         self.records.append(r)
         return super().emit(record)
 
@@ -75,7 +122,7 @@ class _StructlogCapturer:
     """A layer above structlog functionality to store the records."""
 
     def __init__(self):
-        structlog.configure(logger_factory=lambda: self, processors=[self.capture])
+        structlog.configure(logger_factory=lambda: self, processors=[self._capture])
         self.records = []
 
     def teardown(self):
@@ -85,30 +132,20 @@ class _StructlogCapturer:
         """Clean the stored records."""
         self.records.clear()
 
-    def capture(self, logger, levelname, event_dict):
+    def _capture(self, logger, levelname, event_dict):
         """Capture the info from structlog."""
-        print("============ CP __y", (levelname, event_dict))
         levelno = getattr(logging, levelname.upper())
-        r = Record(levelno=levelno, levelname=levelname, message=event_dict["event"]) # FIXME: full!!
+        r = StructRecord(levelno=levelno, levelname=levelname, event_dict=event_dict)
         self.records.append(r)
         return event_dict
 
     def __getattr__(self, name):
-        """
-        Capture call to `calls`
-        """
+        """Really return current interface and fake debug/info/error calls to do nothing."""
         if name in ("teardown", "reset"):
             return object.__getattr__(self, name)
 
-        def capture(*args, **kw) -> None:
-            pass
-            #print("========== capture!!!", name, args, kw)
-            #levelno = getattr(logging, name.upper())
-            #breakpoint()
-            #r = Record(levelno=levelno, levelname=name, message=self.format(record))
-            #self.records.append(r)
+        return lambda *args, **kwargs: None
 
-        return capture
 
 class SetupLogChecker:
     """A version of the LogChecker to use in classic TestCases."""
@@ -177,12 +214,70 @@ class Matcher:
     def __init__(self, token):
         self.token = token
 
-    def search(self, message):
+    def _search(self, message):
         """Search the token in the message, return if it's present."""
         raise NotImplementedError()
 
+    def search(self, *, record=None, message=None):
+        """Search the token in the record/message, return if it's present."""
+        if message is None:
+            message = record.message
+        return self._search(message)
+
     def __str__(self):
-        return "{} {!r} check".format(self.__class__.__name__.lower(), self.token)
+        return f"{self.__class__.__name__}({self.token!r})"
+
+    __repr__ = __str__
+
+
+class Struct(Matcher):
+    """A matcher that checks message and keyword arguments."""
+    def __init__(self, token, **fields):
+        super().__init__(token)
+        self.fields = fields
+
+    def _extra_fields_ok(self, record):
+        """Validate needed extra fields are present."""
+        return set(record.extra_fields).issuperset(self.fields)
+
+    def search(self, record):
+        """Search in message and possible fields, considering each case its own matcher."""
+        if record.extra_fields is None:
+            raise ValueError("Only use Struct matcher if using 'structlog' in the system")
+        if not self._extra_fields_ok(record):
+            return False
+
+        matcher = _get_matcher(self.token)
+        if not matcher.search(message=record.message):
+            return False
+
+        for key, value in self.fields.items():
+            matcher = _get_matcher(value)
+            record_value = record.extra_fields.get(key, MISSING_MARK)
+            if record_value is MISSING_MARK:
+                continue
+
+            if not matcher.search(message=record_value):
+                return False
+
+        return True
+
+    def __str__(self):
+        if self.fields:
+            extra_fields = ", " + ", ".join(
+                f"{key}={value!r}" for key, value in self.fields.items()
+            )
+        else:
+            extra_fields = ""
+        return f"{self.__class__.__name__}({self.token!r}{extra_fields})"
+
+
+class CompleteStruct(Struct):
+    """A variation of struct that checks that fields coverage is complete."""
+
+    def _extra_fields_ok(self, record):
+        """Validate extra fields matches on what was logged."""
+        return set(record.extra_fields) == set(self.fields)
 
 
 class Regex(Matcher):
@@ -191,7 +286,7 @@ class Regex(Matcher):
         super().__init__(token)
         self.regex = re.compile(token)
 
-    def search(self, message):
+    def _search(self, message):
         """Search the token in the message, return if it's present."""
         return bool(self.regex.search(message))
 
@@ -199,7 +294,7 @@ class Regex(Matcher):
 class Exact(Matcher):
     """A matcher that matches exactly the token string."""
 
-    def search(self, message):
+    def _search(self, message):
         """Search the token in the message, return if it's present."""
         return self.token == message
 
@@ -210,9 +305,14 @@ class Multiple(Matcher):
     def __init__(self, *tokens):
         super().__init__(tokens)
 
-    def search(self, message):
+    def _search(self, message):
         """Search the token in the message, return if it's present."""
         return all(t in message for t in self.token)
+
+    def __str__(self):
+        return f"{self.__class__.__name__}{self.token!r}"  # no extra parentheses over the tuple's
+
+    __repr__ = __str__
 
 
 class Sequence(Matcher):
@@ -224,22 +324,43 @@ class Sequence(Matcher):
     def __init__(self, *tokens):
         super().__init__(tokens)
 
+    def __str__(self):
+        return f"{self.__class__.__name__}{self.token!r}"  # no extra parentheses over the tuple's
+
+    __repr__ = __str__
+
 
 class _Nothing(Matcher):
     """A matcher that is succesful only if nothing was logged."""
-    default_response = True
+    def __init__(self):
+        super().__init__(None)  # no token!
+        self.default_response = True
 
-    def search(self, message):
-        """If a message was given, it implies "something was logged"."""
+    def search(self, record):
+        """If a record was given, it implies "something was logged"."""
         # as a message happened, change the final default response
         self.default_response = None
         return False
+
+    def reset(self):
+        """Change to initial status."""
+        self.default_response = True
 
     def __str__(self):
         return 'nothing'
 
 
-NOTHING = _Nothing(None)
+NOTHING = _Nothing()
+
+
+def _get_matcher(item):
+    """Produce a real matcher from a specific item."""
+    if isinstance(item, str):
+        # item is not specific, so default to Regex
+        return Regex(item)
+    if isinstance(item, Matcher):
+        return item
+    raise ValueError(f"Unknown item type: {item!r}")
 
 
 class PyTestComparer:
@@ -248,14 +369,8 @@ class PyTestComparer:
         self._matcher_description = ""
         self.records = self._get_records(handlers)
 
-    def _get_matcher(self, item):
-        """Produce a real matcher from a specific item."""
-        if isinstance(item, str):
-            # item is not specific, so default to Regex
-            return Regex(item)
-        if isinstance(item, Matcher):
-            return item
-        raise ValueError("Unknown item type: {!r}".format(item))
+        # we need to reset the NOTHING comparer here so it's not polluted from the past
+        NOTHING.reset()
 
     def __contains__(self, item):
         if isinstance(item, Sequence):
@@ -263,7 +378,7 @@ class PyTestComparer:
             # sequence! all needs to succeed, in order
             results = []
             for subitem in item.token:
-                matcher = self._get_matcher(subitem)
+                matcher = _get_matcher(subitem)
                 result = self._check(matcher)
                 if result is None:
                     # didn't succeed, calling it off
@@ -272,13 +387,14 @@ class PyTestComparer:
                     results.append(result)
             else:
                 # all went fine... now check if it was in the proper order
-                expected_sequence = list(range(results[0], len(item.token) + 1))
+                from_idx = results[0]
+                expected_sequence = list(range(from_idx, len(item.token) + from_idx))
                 if expected_sequence == results:
                     return True
 
         else:
             # simple matcher, check if it just succeeds
-            matcher = self._get_matcher(item)
+            matcher = _get_matcher(item)
             self._matcher_description = str(matcher)
             if self._check(matcher) is not None:
                 return True
@@ -299,26 +415,22 @@ class PyTestComparer:
                 self._matcher_description, level_name)
 
         messages = [title]
-        for _, logged_levelname, logged_message in self.records:
-            messages.append("     {:9s} {!r}".format(logged_levelname, logged_message))
+        for record in self.records:
+            messages.append(f"     {record.levelname.upper():9s} {record.repr_content}")
         return messages
 
     def _get_records(self, handlers):
         """Get the record objects from the logged data in the first handler that got it."""
         for handler in handlers:
             if handler.records:
-                processed = [
-                    (r.levelno, r.levelname, r.message.split('\n')[0])
-                    for r in handler.records
-                ]
-                return processed
+                return handler.records
         return []
 
     def _check(self, matcher):
         """Check if the matcher is ok with any of the logged levels/messages."""
-        for idx, (logged_level, _, logged_message) in enumerate(self.records):
-            if logged_level == self.level or self.level is None:
-                if matcher.search(logged_message):
+        for idx, record in enumerate(self.records):
+            if record.levelno == self.level or self.level is None:
+                if matcher.search(record=record):
                     return idx
         return matcher.default_response
 
@@ -352,7 +464,6 @@ class FixtureLogChecker:
             handler.teardown()
 
     def __getattribute__(self, name):
-        #breakpoint()
         if name in ("handlers", "reset", "teardown"):
             return object.__getattribute__(self, name)
 
