@@ -1,3 +1,3 @@
 #!/bin/sh
 
-fades -d pytest -m pytest -p pytester "$@"
+fades -r requirements-dev.txt -m pytest -p pytester "$@"

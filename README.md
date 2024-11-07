@@ -1,6 +1,6 @@
 # Log Assertion
 
-![Python package](https://github.com/facundobatista/logassert/workflows/Python%20package/badge.svg)
+![Python tests](https://github.com/facundobatista/logassert/workflows/Python%20package/badge.svg)
 
 ## What?
 
@@ -14,7 +14,54 @@ As is vox populi, you must also test the logging calls in your programs.
 With `logassert` this is now very easy.
 
 
-# Awesome! How do I use it?
+### Why is it easy?
+
+Because it provides a simple and expressive way to use it in the unit tests (see next section) but also because when the assertion fails, it presents a usefult report that helps you to find out why it is failing.
+
+For example, this may be a case when the logged line is slightly different:
+
+Actual code:
+
+```
+    value = "123"
+    logger.debug("Received value is %r", value)
+```
+
+The unit test assertion:
+```
+    assert "Received value is 123" in logs.debug
+```
+
+The report you get as it failed:
+```
+    AssertionError: assert for Regex("Received value is 123") in DEBUG failed; logged lines:\n"
+           DEBUG     "Received value is '123'"
+    )
+```
+
+Or a case where the logged line is ok, but the level is incorrect:
+
+Actual code:
+
+```
+    value = "123"
+    logger.debug("Received value is %s", value)
+```
+
+The unit test assertion:
+```
+    assert "Received value is \d+" in logs.info
+```
+
+The report you get as it failed:
+```
+    AssertionError: assert for Regex("Received value is \d+") in DEBUG failed; logged lines:\n"
+           INFO      "Received value is 123"
+    )
+```
+
+
+# Awesome! How do I use logassert?
 
 The same functionality is exposed in two very different ways, one that fits better the *pytest semantics*, the other one more suitable for classic unit tests.
 
@@ -23,7 +70,7 @@ The same functionality is exposed in two very different ways, one that fits bett
 All you need to do is to declare `logs` in your test arguments, it works
 just like any other fixture.
 
-Then you just check (using `assert`, as usual with *pytest*) if a specific 
+Then you just check (using `assert`, as usual with *pytest*) if a specific
 line is in the logs for a specific level.
 
 Example:
@@ -31,29 +78,28 @@ Example:
 ```python
 def test_bleh(logs)
     (...)
-    assert "The meaning of life is 42" in logs.debug
+    assert "The meaning of life is 42!" in logs.debug
 ```
 
-Actually, the line you write is a regular expression, so you can totally 
+Actually, the line you write is a regular expression, so you can totally
 do (in case you're not exactly sure which the meaning of life is):
 
 ```python
-    assert "The meaning of life is \d+" in logs.debug
+    assert "The meaning of life is \d+!" in logs.debug
 ```
 
-The indicated string is searched to be inside the log lines, it doesn't 
+The indicated string is searched to be inside the log lines, it doesn't
 need to be exact whole line. If you want that, just indicate it as with
 any regular expression:
 
 ```python
-    assert "^The meaning of life is \d+$" in logs.debug
+    assert "^The meaning of life is \d+!$" in logs.debug
 ```
 
-In a similar way you can also express the desire to check if it's at the 
+In a similar way you can also express the desire to check if it's at the
 beginning or at the end of the log lines.
 
-> **NOTE**: the message checked is the final one, after the logging system 
-replaced all the indicated parameters in the indicated string.
+> **NOTE**: the message checked is the formatted one, after the logging system replaced all the parameters in the template and built the final string. In other words, if the code is `logger.debug("My %s", "life")`, the verification will be done in the final `My life` string.
 
 If you want to verify that a text was logged, no matter at which level,
 just do:
@@ -62,7 +108,7 @@ just do:
     assert "The meaning of life is 42" in logs.any_level
 ```
 
-To verify that some text was NOT logged, just juse the Python's syntax! 
+To verify that some text was NOT logged, just juse the Python's syntax!
 For example:
 
 ```python
@@ -71,7 +117,7 @@ For example:
 
 ### But I don't like regexes, I want the exact string
 
-Then you just import `Exact` from `logassert` and wrap the string 
+Then you just import `Exact` from `logassert` and wrap the string
 with that.
 
 For example, in this case the `..` means exactly two dots, no regex
@@ -96,22 +142,22 @@ For example:
 
 ### What if I want to check that nothing was logged?
 
-The simplest way to do it is to use the `NOTHING` verifier that you can 
+The simplest way to do it is to use the `NOTHING` verifier that you can
 import from `logassert`:
 
 ```python
     assert NOTHING in logs.debug
 ```
 
-Note that it doesn't make sense to use it by the negative (`...NOTHING not in logs...`): 
+Note that it doesn't make sense to use it by the negative (`...NOTHING not in logs...`):
 is no really useful at testing level to know that "something was logged", you should
 improve the test to specifically verify *what* was logged.
 
 
 ### Breaking the "per line barrier"
 
-Sometimes it's useful to verify that several lines were logged, and that 
-those lines are logged one after the other, as they build a "composite 
+Sometimes it's useful to verify that several lines were logged, and that
+those lines are logged one after the other, as they build a "composite
 message".
 
 To achieve that control on the logged lines you can use the `Sequence`
@@ -124,7 +170,7 @@ you can use the other helpers there):
         Exact("  error 1: foo"),
         Exact("  error 2: bar"),
     ) in logs.debug
-```    
+```
 
 
 ### Examples
@@ -263,20 +309,73 @@ logger.info("The secret of life, the universe and everything is 42")
 
 You'll have at disposition several assertion methods:
 
-- `self.assertLogged`: will check that the strings 
+- `self.assertLogged`: will check that the strings
   were logged, no matter at which level
 
-- `self.assertLoggedLEVEL` (being LEVEL one of Error, 
-  Warning, Info, or Debug): will check that the strings were logged at 
+- `self.assertLoggedLEVEL` (being LEVEL one of Error,
+  Warning, Info, or Debug): will check that the strings were logged at
   that specific level.
 
-- `self.assertNotLogged`: will check that the 
+- `self.assertNotLogged`: will check that the
   strings were NOT logged, no matter at which level
 
-- `self.assertNotLoggedLEVEL` (being LEVEL one of 
-  Error, Warning, Info, or Debug): will check that the strings were NOT 
+- `self.assertNotLoggedLEVEL` (being LEVEL one of
+  Error, Warning, Info, or Debug): will check that the strings were NOT
   logged at that specific level.
 
+
+## Support for structured logs
+
+The [structlog](https://pypi.org/project/structlog/) library is very commonly used by developers. It provides a simple way of logging using messages and dictionaries with structured data that later are processed in powerful ways.
+
+For example you can do:
+
+```
+    ...
+    result = "success"
+    code = 37
+    logger.debug("Process finished correctly", result=result, code=code)
+```
+
+How do you test that? Don't panic! `logassert` supports `structlog` :)
+
+It is very similar to the regular logging checks, but formalizing that there is a structure with a message and other fields:
+
+```
+    assert Struct("Process finished", result="success") in logs.debug
+```
+
+When a string is used in the main message or any of the field values, the regular `logassert` rules apply (by default it is a regular expression and is searched *in* the logged text) but you can use all the power of the helpers, like checking for the exact string...
+
+```
+    assert Struct(Exact("Process finished correctly"), result="success") in logs.debug
+```
+
+...or using multiple strings...
+
+```
+    assert Struct(Multiple("correctly", "finished"), result="success") in logs.debug
+```
+
+... etc.
+
+If the field value is not a string, it's matches just for equality:
+
+```
+    assert Struct("finished", code=37) in logs.debug
+    assert Struct("finished", code=3) not in logs.debug
+```
+
+
+### Complete structures
+
+The previous examples just verified that the indicated fields exist in the logged lines, but they do NOT assert that those are ALL the logged fields.
+
+If you want to check that the given message and fields match but also verify that the those are all the logged fields, you need to use `CompleteStruct`. E.g.:
+
+```
+    assert CompleteStruct("finished", code=37, result="success") in logs.debug
+```
 
 
 # Nice! But...

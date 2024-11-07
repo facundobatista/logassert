@@ -218,10 +218,16 @@ class Matcher:
         """Search the token in the message, return if it's present."""
         raise NotImplementedError()
 
-    def search(self, *, record=None, message=None):
+    def search(self, *, record=None, message=MISSING_MARK):
         """Search the token in the record/message, return if it's present."""
-        if message is None:
+        if message is MISSING_MARK:
             message = record.message
+
+        # only support searching into non-strings if it's Exact; the rest relies
+        # on searching in strings
+        if not isinstance(self, Exact) and not isinstance(message, str):
+            return False
+
         return self._search(message)
 
     def __str__(self):
@@ -360,7 +366,10 @@ def _get_matcher(item):
         return Regex(item)
     if isinstance(item, Matcher):
         return item
-    raise ValueError(f"Unknown item type: {item!r}")
+
+    # any other type should match exactly -- this is to suppor when non-string is
+    # matched to something else
+    return Exact(item)
 
 
 class PyTestComparer:

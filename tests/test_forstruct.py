@@ -57,6 +57,28 @@ def test_safe_dict(logs):
     assert kwargs == {"baz": "123"}
 
 
+# -- non-string fields
+
+def test_nonstrings_basic(logs):
+    logger.debug("test", foo=653, bar="653")
+    assert Struct("test", foo=653, bar="653") in logs.any_level
+    assert Struct("test", foo=653, bar="65") in logs.any_level
+    assert Struct("test", foo=65, bar="653") not in logs.any_level
+
+
+def test_nonstrings_none(logs):
+    logger.debug("test", foo=None)
+    assert Struct("test", foo=None) in logs.any_level
+    assert Struct("test", foo="") not in logs.any_level
+
+
+def test_nonstrings_other_matchers(logs):
+    logger.debug("test", foo=None, bar=123)
+    assert Struct("test", foo="", bar="123") not in logs.any_level
+    assert Struct("test", foo=Exact(""), bar=Exact("123")) not in logs.any_level
+    assert Struct("test", foo="", bar=Multiple("1", "2")) not in logs.any_level
+
+
 # -- supports helpers also in "regular fixture" way
 
 def test_compatibility_exact(logs):
