@@ -1,6 +1,6 @@
 # Log Assertion
 
-![Python tests](https://github.com/facundobatista/logassert/workflows/Python%20package/badge.svg)
+![CI](https://github.com/facundobatista/logassert/workflows/tests.yaml/badge.svg)
 
 ## What?
 
@@ -34,7 +34,7 @@ The unit test assertion:
 
 The report you get as it failed:
 ```
-    AssertionError: assert for Regex("Received value is 123") in DEBUG failed; logged lines:\n"
+    AssertionError: assert for Regex("Received value is 123") in DEBUG failed; logged lines:
            DEBUG     "Received value is '123'"
     )
 ```
@@ -55,7 +55,7 @@ The unit test assertion:
 
 The report you get as it failed:
 ```
-    AssertionError: assert for Regex("Received value is \d+") in DEBUG failed; logged lines:\n"
+    AssertionError: assert for Regex("Received value is \d+") in DEBUG failed; logged lines:
            INFO      "Received value is 123"
     )
 ```
@@ -63,7 +63,7 @@ The report you get as it failed:
 
 # Awesome! How do I use logassert?
 
-The same functionality is exposed in two very different ways, one that fits better the *pytest semantics*, the other one more suitable for classic unit tests.
+After [installing](#how-to-install), the same functionality is exposed in two very different ways, one that fits better the *pytest semantics*, the other one more suitable for *classic unit tests*.
 
 ## For pytest
 
@@ -246,11 +246,11 @@ See the following test sequence:
 
 ```python
 def test_welcoming message(logs):
-    logger.info("foo")  # first log! it should trigger the welcoming message
+    custom_logger.info("foo")  # first log! it should trigger the welcoming message
     assert "Welcome" in logs.info
 
     logs.reset()
-    logger.info("foo")  # second log! it should NOT trigger the welcoming message
+    custom_logger.info("foo")  # second log! it should NOT trigger the welcoming message
     assert "Welcome" not in logs.info
 ```
 
@@ -375,6 +375,14 @@ If you want to check that the given message and fields match but also verify tha
 
 ```
     assert CompleteStruct("finished", code=37, result="success") in logs.debug
+```
+
+# How to install
+
+`logassert` is a very small pure Python library, easiest way to install is from PyPI:
+
+```
+    pip install logassert
 ```
 
 
