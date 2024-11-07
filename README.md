@@ -1,6 +1,6 @@
 # Log Assertion
 
-![CI](https://github.com/facundobatista/logassert/workflows/tests.yaml/badge.svg)
+![Tests](https://github.com/facundobatista/logassert/actions/workflows/tests.yml/badge.svg)
 
 ## What?
 
