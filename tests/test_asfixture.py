@@ -1,4 +1,4 @@
-# Copyright 2020-2022 Facundo Batista
+# Copyright 2020-2024 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -20,7 +20,7 @@ import logging
 
 import pytest
 
-from logassert import Exact, Multiple, Sequence, NOTHING
+from logassert import Exact, Multiple, Sequence, NOTHING, Struct, CompleteStruct
 
 logger = logging.getLogger()
 
@@ -58,7 +58,7 @@ def test_failure_message_simple(logs):
     with pytest.raises(AssertionError) as err:
         assert "bbb" in logs.debug
     assert str(err.value) == (
-        "assert for regex 'bbb' check in DEBUG failed; logged lines:\n"
+        "assert for Regex('bbb') in DEBUG failed; logged lines:\n"
         "       DEBUG     'aaa'"
     )
 
@@ -67,7 +67,7 @@ def test_failure_message_no_logs(logs):
     with pytest.raises(AssertionError) as err:
         assert "bbb" in logs.debug
     assert str(err.value) == (
-        "assert for regex 'bbb' check in DEBUG failed; no logged lines at all!"
+        "assert for Regex('bbb') in DEBUG failed; no logged lines at all!"
     )
 
 
@@ -76,7 +76,7 @@ def test_failure_message_any_level(logs):
     with pytest.raises(AssertionError) as err:
         assert "bbb" in logs.any_level
     assert str(err.value) == (
-        "assert for regex 'bbb' check in any level failed; logged lines:\n"
+        "assert for Regex('bbb') in any level failed; logged lines:\n"
         "       DEBUG     'aaa'"
     )
 
@@ -87,7 +87,7 @@ def test_failure_message_multiple(logs):
     with pytest.raises(AssertionError) as err:
         assert "bbb" in logs.debug
     assert str(err.value) == (
-        "assert for regex 'bbb' check in DEBUG failed; logged lines:\n"
+        "assert for Regex('bbb') in DEBUG failed; logged lines:\n"
         "       DEBUG     'aaa'\n"
         "       WARNING   'bbb'"
     )
@@ -101,10 +101,11 @@ def test_failure_message_exception(logs):
 
     with pytest.raises(AssertionError) as err:
         assert "will make it fail" in logs.error
-    assert str(err.value) == (
-        "assert for regex 'will make it fail' check in ERROR failed; logged lines:\n"
-        "       ERROR     'test message'"
+    msg_lines = str(err.value).split("\n")
+    assert msg_lines[0] == (
+        "assert for Regex('will make it fail') in ERROR failed; logged lines:"
     )
+    assert msg_lines[1].startswith(r"       ERROR     'test message\nTraceback (most recent")
 
 
 # -- different forms of comparison
@@ -144,7 +145,7 @@ def test_exact_failure(logs):
     check_ok = comparer.__contains__(Exact("bbb"))
     assert not check_ok
     assert comparer.messages == [
-        "for exact 'bbb' check in DEBUG failed; logged lines:",
+        "for Exact('bbb') in DEBUG failed; logged lines:",
         "     DEBUG     'aaa'",
     ]
 
@@ -165,7 +166,7 @@ def test_multiple_failure(logs):
     check_ok = comparer.__contains__(Multiple("bbb", 'ccc'))
     assert not check_ok
     assert comparer.messages == [
-        "for multiple ('bbb', 'ccc') check in DEBUG failed; logged lines:",
+        "for Multiple('bbb', 'ccc') in DEBUG failed; logged lines:",
         "     DEBUG     'aaa'",
     ]
 
@@ -185,7 +186,7 @@ def test_sequence_rotated(logs):
     check_ok = comparer.__contains__(Sequence("a1", "a2"))
     assert not check_ok
     assert comparer.messages == [
-        "for sequence ('a1', 'a2') check in DEBUG failed; logged lines:",
+        "for Sequence('a1', 'a2') in DEBUG failed; logged lines:",
         "     DEBUG     'a2'",
         "     DEBUG     'a1'",
     ]
@@ -197,7 +198,7 @@ def test_sequence_partial(logs):
     check_ok = comparer.__contains__(Sequence("a1", "a2"))
     assert not check_ok
     assert comparer.messages == [
-        "for sequence ('a1', 'a2') check in DEBUG failed; logged lines:",
+        "for Sequence('a1', 'a2') in DEBUG failed; logged lines:",
         "     DEBUG     'a1'",
     ]
 
@@ -210,7 +211,7 @@ def test_sequence_interrupted(logs):
     check_ok = comparer.__contains__(Sequence("a1", "a2"))
     assert not check_ok
     assert comparer.messages == [
-        "for sequence ('a1', 'a2') check in DEBUG failed; logged lines:",
+        "for Sequence('a1', 'a2') in DEBUG failed; logged lines:",
         "     DEBUG     'a1'",
         "     DEBUG     '--'",
         "     DEBUG     'a2'",
@@ -252,6 +253,13 @@ def test_basic_avoid_delayed_messaging(logs):
 
 def test_nothing_ok(logs):
     logger.debug("aaa")
+    assert NOTHING in logs.warning
+
+
+def test_nothing_repeated_crossed(logs):
+    logger.debug("aaa")
+    with pytest.raises(AssertionError):
+        assert NOTHING in logs.debug
     assert NOTHING in logs.warning
 
 
@@ -302,7 +310,9 @@ def test_levels_assert_ok_exception(logs):
         raise ValueError("test error")
     except ValueError:
         logger.exception("test message")
-    assert "^test message$" in logs.error
+    assert "test.message" in logs.error
+    assert "ValueError" in logs.error
+    assert "test.error" in logs.error
 
 
 def test_levels_assert_different_level_fail_debug_warning(logs):
@@ -364,8 +374,8 @@ def test_as_fixture_double_handler(testdir, pytestconfig):
         def test_2(logs):
             logger.debug('test')
             assert "test" in logs.debug
-            assert len(
-                [h for h in logger.handlers if isinstance(h, logassert._StoringHandler)]) == 1
+            hdlrs = [h for h in logger.handlers if isinstance(h, logassert._StdlibStoringHandler)]
+            assert len(hdlrs) == 1
     """
     )
 
@@ -403,8 +413,8 @@ def test_as_fixture_clean_up(testdir, pytestconfig):
         @pytest.fixture(scope="session", autouse=True)
         def cleanup(request):
             assert logger.getEffectiveLevel() == 30
-            assert len(
-                [h for h in logger.handlers if isinstance(h, logassert._StoringHandler)]) == 0
+            hdlrs = [h for h in logger.handlers if isinstance(h, logassert._StdlibStoringHandler)]
+            assert len(hdlrs) == 0
     """
     )
 
@@ -451,7 +461,16 @@ def test_logged_lines_are_shown_when_using_not_in(logs):
     with pytest.raises(AssertionError) as err:
         assert "foo" not in logs.error
 
-    expected_log = ("assert for regex 'foo' check in ERROR failed; logged lines:\n"
+    expected_log = ("assert for Regex('foo') in ERROR failed; logged lines:\n"
                     "       ERROR     'foo'")
 
     assert expected_log == str(err.value)
+
+
+# -- not clashing with other ways of using logassert
+
+@pytest.mark.parametrize("struct_class", [Struct, CompleteStruct])
+def test_not_struct(logs, struct_class):
+    logger.error("foo")
+    with pytest.raises(ValueError):
+        assert struct_class("foo") in logs.error
