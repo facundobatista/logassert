@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2015-2020 Facundo Batista
+# Copyright 2015-2024 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -22,7 +22,7 @@ from setuptools import setup
 
 setup(
     name='logassert',
-    version='7',
+    version='8',
     license='LGPL-3',
     author='Facundo Batista',
     author_email='facundo@taniquetil.com.ar',
@@ -36,7 +36,7 @@ setup(
 
     packages=["logassert"],
     install_requires=['setuptools'],
-    python_requires='>=3.5',
+    python_requires='>=3.9',
 
     # https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
@@ -66,10 +66,10 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
 
         'Topic :: Software Development',
         'Topic :: Utilities',
