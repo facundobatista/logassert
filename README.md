@@ -16,7 +16,7 @@ With `logassert` this is now very easy.
 
 ### Why is it easy?
 
-Because it provides a simple and expressive way to use it in the unit tests (see next section) but also because when the assertion fails, it presents a usefult report that helps you to find out why it is failing.
+Because it provides a simple and expressive way to use it in the unit tests (see next section) but also because when the assertion fails, it presents a useful report that helps you to find out why it is failing.
 
 For example, this may be a case when the logged line is slightly different:
 
