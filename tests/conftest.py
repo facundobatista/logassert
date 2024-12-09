@@ -18,6 +18,11 @@
 
 import pytest
 
+# to be able to use `logs` in our unit tests
+pytest_plugins = [
+    "logassert.pytest_plugin",
+]
+
 
 @pytest.fixture
 def integtest_runner(testdir, pytestconfig):
