@@ -329,37 +329,22 @@ def test_levels_assert_different_level_fail_warning_debug(logs):
 
 # -- Usage as a fixture!
 
-def test_as_fixture_basic(testdir, pytestconfig):
+def test_as_fixture_basic(integtest_runner):
     """Make sure that our plugin works."""
-    # create a temporary conftest.py file
-    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
-    with plugin_fpath.open('rt', encoding='utf8') as fh:
-        testdir.makeconftest(fh.read())
-
-    # create a temporary pytest test file
-    testdir.makepyfile(
+    result = integtest_runner(
         """
         def test_hello_default(logs):
             assert "anything" not in logs.any_level
     """
     )
 
-    # run the test with pytest
-    result = testdir.runpytest()
-
     # check that the test passed
     result.assert_outcomes(passed=1)
 
 
-def test_as_fixture_double_handler(testdir, pytestconfig):
+def test_as_fixture_double_handler(integtest_runner):
     """Check that we don't hook many handlers."""
-    # create a temporary conftest.py file
-    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
-    with plugin_fpath.open('rt', encoding='utf8') as fh:
-        testdir.makeconftest(fh.read())
-
-    # create a temporary pytest test file
-    testdir.makepyfile(
+    result = integtest_runner(
         """
         from logassert import logassert
 
@@ -378,24 +363,15 @@ def test_as_fixture_double_handler(testdir, pytestconfig):
             assert len(hdlrs) == 1
     """
     )
-
-    # run the test with pytest
-    result = testdir.runpytest()
     print('\n'.join(result.stdout.lines))
 
     # check that the test passed
     result.assert_outcomes(passed=2)
 
 
-def test_as_fixture_clean_up(testdir, pytestconfig):
+def test_as_fixture_clean_up(integtest_runner):
     """Don't leave traces of setup."""
-    # create a temporary conftest.py file
-    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
-    with plugin_fpath.open('rt', encoding='utf8') as fh:
-        testdir.makeconftest(fh.read())
-
-    # create a temporary pytest test file
-    testdir.makepyfile(
+    result = integtest_runner(
         """
         import logging
 
@@ -417,24 +393,15 @@ def test_as_fixture_clean_up(testdir, pytestconfig):
             assert len(hdlrs) == 0
     """
     )
-
-    # run the test with pytest
-    result = testdir.runpytest()
     print('\n'.join(result.stdout.lines))
 
     # check that the test passed
     result.assert_outcomes(passed=1)
 
 
-def test_as_fixture_no_record_leaking(testdir, pytestconfig):
+def test_as_fixture_no_record_leaking(integtest_runner):
     """Nothing is leaked between tests."""
-    # create a temporary conftest.py file
-    plugin_fpath = pytestconfig.rootdir / 'logassert' / 'pytest_plugin.py'
-    with plugin_fpath.open('rt', encoding='utf8') as fh:
-        testdir.makeconftest(fh.read())
-
-    # create a temporary pytest test file
-    testdir.makepyfile(
+    result = integtest_runner(
         """
         import logging
 
@@ -448,10 +415,6 @@ def test_as_fixture_no_record_leaking(testdir, pytestconfig):
             assert "test" not in logs.any_level
     """
     )
-
-    # run the test with pytest
-    result = testdir.runpytest()
-
     # check that the test passed
     result.assert_outcomes(passed=2)
 

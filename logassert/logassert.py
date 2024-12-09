@@ -122,7 +122,9 @@ class _StructlogCapturer:
     """A layer above structlog functionality to store the records."""
 
     def __init__(self):
-        structlog.configure(logger_factory=lambda: self, processors=[self._capture])
+        # the factory receives the args (not kwargs) passed to `getLogger` call -- we're not
+        # really using them, so we ignore them
+        structlog.configure(logger_factory=lambda *args: self, processors=[self._capture])
         self.records = []
 
     def teardown(self):

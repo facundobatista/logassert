@@ -264,3 +264,29 @@ def test_completestruct_coverage_exceeded(logs):
     assert CompleteStruct("test", extra="") not in logs.any_level
     logger.debug("test", foo="ok")
     assert CompleteStruct("test", foo="ok", extra="") not in logs.any_level
+
+
+# -- integration tests
+
+
+def test_with_factory_args(integtest_runner):
+    """The logger is created passing some parameter."""
+    result = integtest_runner(
+        """
+        import structlog
+
+        import pytest
+
+        from logassert import logassert
+
+        logger = structlog.getLogger("somemod")  # typical __name__
+
+        def test_1(logs):
+            logger.debug('test')
+            assert "test" in logs.any_level
+    """
+    )
+    print('\n'.join(result.stdout.lines))
+
+    # check that the test passed
+    result.assert_outcomes(passed=1)
