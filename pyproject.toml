@@ -1,0 +1,68 @@
+[build-system]
+requires = [
+    "setuptools>=70.0.0",
+    "wheel",
+    "build",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logassert"
+version = "8.1"
+license = {file = "LICENSE"}
+description = "Simple but powerful assertion and verification of logged lines"
+authors = [
+    {name = "Facundo Batista", email = "facundo@taniquetil.com.ar"},
+]
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+
+    "Framework :: Pytest",
+
+    "Environment :: Console",
+
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+
+    "Natural Language :: English",
+    "Natural Language :: Spanish",
+
+    "Operating System :: MacOS",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+
+    "Topic :: Software Development",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+"Source code" = 'https://github.com/facundobatista/logassert'
+
+[tool.setuptools.packages.find]
+# where = ["src"]
+include = ["logassert*"]
+
+[project.entry-points.pytest11]
+logassert = "logassert.pytest_plugin"
+
+[tool.flake8]
+extend_ignore = [
+    "F821",
+]

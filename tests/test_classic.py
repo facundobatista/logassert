@@ -220,3 +220,15 @@ class NotLoggedTestCase(unittest.TestCase):
         logger.info("test")
         ftc.assertNotLoggedError("test")
         self.assertEqual(ftc.failed, None)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    """
+    Without coverage
+
+    .. code-block:: shell
+
+       python -m tests.test_classic
+
+    """
+    unittest.main(tb_locals=True)
