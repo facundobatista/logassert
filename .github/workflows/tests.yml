@@ -28,7 +28,7 @@ jobs:
         python -m pip install --upgrade pip
     - name: Install package and dev dependencies
       run: |
-        python -m pip install --disable-pip-version-check --no-deps -q .[dev]
+        python -m pip install --disable-pip-version-check -q .[dev]
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
