@@ -55,14 +55,16 @@ classifiers = [
 [project.urls]
 "Source code" = 'https://github.com/facundobatista/logassert'
 
-[tool.setuptools.packages.find]
-# where = ["src"]
-include = ["logassert*"]
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "flake8-pyproject",
+    "pytest",
+    "structlog",
+]
 
 [project.entry-points.pytest11]
 logassert = "logassert.pytest_plugin"
 
-[tool.flake8]
-extend_ignore = [
-    "F821",
-]
+[tool.setuptools.packages.find]
+include = ["logassert*"]

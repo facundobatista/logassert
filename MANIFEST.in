@@ -3,9 +3,6 @@ include README.md
 include LICENSE
 include AUTHORS
 
-# git
-include .gitignore
-
 # github
 graft .github
 
