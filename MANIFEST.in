@@ -1,20 +1,8 @@
 # project
-include README.md
-include LICENSE
+
 include AUTHORS
 
-# github
-graft .github
-
-# configs
-include .mkdocs.yml
-include .readthedocs.yaml
-
-# Requirement files
-include requirements-dev.in
-
-# Should be a Makefile
-include test
-
-# docs (build converts symlink to copy of README.md)
-graft docs
+prune docs
+prune .github
+exclude .gitignore .mkdocs.yml .readthedocs.yaml test
+prune tests
