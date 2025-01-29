@@ -386,6 +386,21 @@ If you want to check that the given message and fields match but also verify tha
 ```
 
 
+# How to help with development
+
+If you actually want to work in `logassert` itself, clone this repository or a fork that you may create in Github, and then:
+
+
+```
+    python3 -m venv env
+    source env/bin/activate
+    pip install .[dev]
+    ./test
+```
+
+That will create a virtualenv, install dependencies needed for development, and run tests. From there you're set to continue.
+
+
 # Nice! But...
 
 If you need help, or have any question, or found any issue, please open a
