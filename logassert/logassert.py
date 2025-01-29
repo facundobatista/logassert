@@ -1,4 +1,4 @@
-# Copyright 2015-2024 Facundo Batista
+# Copyright 2015-2025 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -431,11 +431,11 @@ class PyTestComparer:
         return messages
 
     def _get_records(self, handlers):
-        """Get the record objects from the logged data in the first handler that got it."""
+        """Get the record objects from the logged data in all the handlers."""
+        records = []
         for handler in handlers:
-            if handler.records:
-                return handler.records
-        return []
+            records.extend(handler.records)
+        return records
 
     def _check(self, matcher):
         """Check if the matcher is ok with any of the logged levels/messages."""
