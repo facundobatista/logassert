@@ -1,4 +1,4 @@
-# Copyright 2024 Facundo Batista
+# Copyright 2025 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -284,6 +284,34 @@ def test_with_factory_args(integtest_runner):
         def test_1(logs):
             logger.debug('test')
             assert "test" in logs.any_level
+    """
+    )
+    print('\n'.join(result.stdout.lines))
+
+    # check that the test passed
+    result.assert_outcomes(passed=1)
+
+
+def test_simulteneous_loggers(integtest_runner):
+    """Two loggers are simultaneously used."""
+    result = integtest_runner(
+        """
+        import logging
+
+        import structlog
+
+        import pytest
+
+        from logassert import logassert
+
+        logger1 = structlog.getLogger()
+        logger2 = logging.getLogger()
+
+        def test_1(logs):
+            logger1.debug('test1')
+            logger2.debug('test2')
+            assert "test1" in logs.debug
+            assert "test2" in logs.debug
     """
     )
     print('\n'.join(result.stdout.lines))
