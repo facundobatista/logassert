@@ -155,6 +155,12 @@ def test_struct_kwargs_one_regex(logs):
     assert Struct("te.t", foo="bar") in logs.any_level
 
 
+def test_struct_regex_bytes(logs):
+    logger.debug("test", foo=b"bar")
+    assert Struct("test", foo=b"ba.") in logs.any_level
+    assert Struct("te.t", foo=b"bar") in logs.any_level
+
+
 def test_struct_kwargs_one_exact(logs):
     logger.debug("test", foo="bar")
     assert Struct(Exact("test"), foo="bar") in logs.any_level

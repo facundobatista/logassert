@@ -227,7 +227,7 @@ class Matcher:
 
         # only support searching into non-strings if it's Exact; the rest relies
         # on searching in strings
-        if not isinstance(self, Exact) and not isinstance(message, str):
+        if not isinstance(self, Exact) and not isinstance(message, (str, bytes)):
             return False
 
         return self._search(message)
@@ -363,7 +363,7 @@ NOTHING = _Nothing()
 
 def _get_matcher(item):
     """Produce a real matcher from a specific item."""
-    if isinstance(item, str):
+    if isinstance(item, (str, bytes)):
         # item is not specific, so default to Regex
         return Regex(item)
     if isinstance(item, Matcher):
