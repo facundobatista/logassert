@@ -298,8 +298,8 @@ def test_with_factory_args(integtest_runner):
     result.assert_outcomes(passed=1)
 
 
-def test_simulteneous_loggers(integtest_runner):
-    """Two loggers are simultaneously used."""
+def test_simulteneous_loggers_simple(integtest_runner):
+    """Two loggers are simultaneously used, simple check."""
     result = integtest_runner(
         """
         import logging
@@ -318,6 +318,36 @@ def test_simulteneous_loggers(integtest_runner):
             logger2.debug('test2')
             assert "test1" in logs.debug
             assert "test2" in logs.debug
+    """
+    )
+    print('\n'.join(result.stdout.lines))
+
+    # check that the test passed
+    result.assert_outcomes(passed=1)
+
+
+def test_simulteneous_loggers_struct(integtest_runner):
+    """Two loggers are simultaneously used, struct check."""
+    result = integtest_runner(
+        """
+        import logging
+
+        import structlog
+
+        import pytest
+
+        from logassert import logassert, Struct
+
+        logger_stdlib = logging.getLogger()
+        logger_struct = structlog.getLogger()
+
+        def test_1(logs):
+            # this may be done in a part of the code we do not control
+            logger_stdlib.debug('whatever')
+
+            # this is where we have control, full structlog
+            logger_struct.debug('foo123', bar=75)
+            assert Struct("foo...", bar=75) in logs.debug
     """
     )
     print('\n'.join(result.stdout.lines))

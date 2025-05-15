@@ -1,4 +1,4 @@
-# Copyright 2020-2024 Facundo Batista
+# Copyright 2020-2025 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -430,10 +430,11 @@ def test_logged_lines_are_shown_when_using_not_in(logs):
     assert expected_log == str(err.value)
 
 
-# -- not clashing with other ways of using logassert
+# -- clashing with other ways of using logassert
 
 @pytest.mark.parametrize("struct_class", [Struct, CompleteStruct])
-def test_not_struct(logs, struct_class):
+def test_struct(logs, struct_class):
+    """Using struct without keywords is similar to not using it, just for flexibility."""
     logger.error("foo")
-    with pytest.raises(ValueError):
-        assert struct_class("foo") in logs.error
+    assert struct_class("fo.") in logs.error
+    assert struct_class("foo", bar=2) not in logs.error
