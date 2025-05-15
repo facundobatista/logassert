@@ -395,7 +395,7 @@ structlog.configure(
 While using that `wrapper_class` is kind of OK, the real problem comes with the second line. You may solve it in the settings / configuration, or add an automatic fixture in `conftest.py` to change `cache_logger_on_first_use` back to `False`.
 
 
-# How to install
+# How to install logassert
 
 `logassert` is a very small pure Python library, easiest way to install is from PyPI:
 
