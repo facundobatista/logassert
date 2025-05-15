@@ -36,7 +36,7 @@ class SimpleRecord:
         self.levelname = levelname
         self.levelno = levelno
         self.message = message
-        self.extra_fields = None
+        self.extra_fields = {}
 
     @property
     def repr_content(self):
@@ -250,8 +250,6 @@ class Struct(Matcher):
 
     def search(self, record):
         """Search in message and possible fields, considering each case its own matcher."""
-        if record.extra_fields is None:
-            raise ValueError("Only use Struct matcher if using 'structlog' in the system")
         if not self._extra_fields_ok(record):
             return False
 

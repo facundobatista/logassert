@@ -377,6 +377,24 @@ If you want to check that the given message and fields match but also verify tha
     assert CompleteStruct("finished", code=37, result="success") in logs.debug
 ```
 
+### For structlog you need... structured logs
+
+You may have `structlog` installed and be using it properly like `logger.info("some text", foo="bar")`, but if `structlog` is configured to use `structlog.stdlib.BoundLogger` the logged message and keywords will be mashed up in a big string, so you lose the ability of "struct testing" with `logassert`.
+
+It is fine, though, because `logassert` registers it's own logger class when the `logs` fixture kicks in. However, if in your project `structlog` is also configured to cache the logger on first use, the original logger with stdlib behaviour will *always* be used.
+
+For example, you may have the following in your project's setting / configuration:
+
+```
+structlog.configure(
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+```
+
+While using that `wrapper_class` is kind of OK, the real problem comes with the second line. You may solve it in the settings / configuration, or add an automatic fixture in `conftest.py` to change `cache_logger_on_first_use` back to `False`.
+
+
 # How to install
 
 `logassert` is a very small pure Python library, easiest way to install is from PyPI:
