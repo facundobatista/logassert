@@ -179,6 +179,24 @@ def test_sequence_simple(logs):
     assert Sequence("a1", "a2") in logs.debug
 
 
+def test_sequence_multiple_matches_simple(logs):
+    # kindly provided by Benjamin Desef in https://github.com/facundobatista/logassert/issues/18
+    logger.info("event A")
+    logger.info("event B")
+    logger.info("event A")
+    assert Sequence("event A", "event B", "event A") in logs.info
+
+
+def test_sequence_multiple_matches_misleading_first(logs):
+    logger.info("foo")
+    logger.info("a1")  # sequence may start here but not really
+    logger.info("bar")
+    logger.info("a1")
+    logger.info("a2")
+    logger.info("a1")
+    assert Sequence("a1", "a2", "a1") in logs.info
+
+
 def test_sequence_rotated(logs):
     logger.debug("a2")
     logger.debug("a1")
@@ -203,7 +221,7 @@ def test_sequence_partial(logs):
     ]
 
 
-def test_sequence_interrupted(logs):
+def test_sequence_interrupted_same_level(logs):
     logger.debug("a1")
     logger.debug("--")
     logger.debug("a2")
@@ -214,6 +232,30 @@ def test_sequence_interrupted(logs):
         "for Sequence('a1', 'a2') in DEBUG failed; logged lines:",
         "     DEBUG     'a1'",
         "     DEBUG     '--'",
+        "     DEBUG     'a2'",
+    ]
+
+
+def test_sequence_interrupted_different_level_check_specific_level(logs):
+    # kindly provided by Benjamin Desef in https://github.com/facundobatista/logassert/issues/18
+    logger.debug("a1")
+    logger.info("--")
+    logger.debug("a2")
+    # the "interruption" is in other level, not the checked one, so it does not really interrupt
+    assert Sequence("a1", "a2") in logs.debug
+
+
+def test_sequence_interrupted_different_level_check_any_level(logs):
+    logger.debug("a1")
+    logger.info("--")
+    logger.debug("a2")
+    comparer = logs.any_level
+    check_ok = comparer.__contains__(Sequence("a1", "a2"))
+    assert not check_ok
+    assert comparer.messages == [
+        "for Sequence('a1', 'a2') in any level failed; logged lines:",
+        "     DEBUG     'a1'",
+        "     INFO      '--'",
         "     DEBUG     'a2'",
     ]
 

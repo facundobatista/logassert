@@ -211,7 +211,7 @@ class SetupLogChecker:
 
 class Matcher:
     """A generic matcher."""
-    default_response = None
+    default_response = False
 
     def __init__(self, token):
         self.token = token
@@ -345,7 +345,7 @@ class _Nothing(Matcher):
     def search(self, record):
         """If a record was given, it implies "something was logged"."""
         # as a message happened, change the final default response
-        self.default_response = None
+        self.default_response = False
         return False
 
     def reset(self):
@@ -382,31 +382,43 @@ class PyTestComparer:
         NOTHING.reset()
 
     def __contains__(self, item):
+        # get the records that apply for the specified level, if any
+        records = [rec for rec in self.records if rec.levelno == self.level or self.level is None]
+
         if isinstance(item, Sequence):
             self._matcher_description = str(item)
             # sequence! all needs to succeed, in order
-            results = []
-            for subitem in item.token:
-                matcher = _get_matcher(subitem)
-                result = self._check(matcher)
-                if result is None:
-                    # didn't succeed, calling it off
-                    break
-                else:
-                    results.append(result)
-            else:
-                # all went fine... now check if it was in the proper order
-                from_idx = results[0]
-                expected_sequence = list(range(from_idx, len(item.token) + from_idx))
-                if expected_sequence == results:
-                    return True
+            return self._verify_sequence(item.token, records)
 
+        # simple matcher, check if it just succeeds
+        matcher = _get_matcher(item)
+        self._matcher_description = str(matcher)
+
+        if any(matcher.search(record=record) for record in records):
+            result = True
         else:
-            # simple matcher, check if it just succeeds
-            matcher = _get_matcher(item)
-            self._matcher_description = str(matcher)
-            if self._check(matcher) is not None:
+            result = matcher.default_response
+        return result
+
+    def _verify_sequence(self, token, records):
+        """Verify if the sequence matches ok."""
+        # produce the matchers for each token item
+        matchers = [_get_matcher(subitem) for subitem in token]
+
+        # the sequence may start at any point, get sample sections and try to match
+        len_matchers = len(matchers)
+        for start_idx in range(len(records) - len_matchers + 1):
+            section = records[start_idx:start_idx + len_matchers]
+
+            for rec, mch in zip(section, matchers):
+                if not mch.search(record=rec):
+                    # matcher didn't match, this sequence is not useful
+                    break
+            else:
+                # got to the end of the section! all matched! found it!
                 return True
+
+        # exhausted all possible sections and no complete match
         return False
 
     @property
@@ -434,14 +446,6 @@ class PyTestComparer:
         for handler in handlers:
             records.extend(handler.records)
         return records
-
-    def _check(self, matcher):
-        """Check if the matcher is ok with any of the logged levels/messages."""
-        for idx, record in enumerate(self.records):
-            if record.levelno == self.level or self.level is None:
-                if matcher.search(record=record):
-                    return idx
-        return matcher.default_response
 
 
 class FixtureLogChecker:
