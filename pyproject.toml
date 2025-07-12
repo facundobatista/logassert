@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "logassert"
-version = "8.4"
+version = "8.5"
 license = {file = "LICENSE"}
 description = "Simple but powerful assertion and verification of logged lines"
 authors = [
@@ -47,6 +47,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 
     "Topic :: Software Development",
     "Topic :: Utilities",
