@@ -326,6 +326,8 @@ You'll have at disposition several assertion methods:
 
 ## Support for structured logs
 
+*(new in v8)*
+
 The [structlog](https://pypi.org/project/structlog/) library is very commonly used by developers. It provides a simple way of logging using messages and dictionaries with structured data that later are processed in powerful ways.
 
 For example you can do:
@@ -364,6 +366,13 @@ If the field value is not a string, it's matches just for equality:
 ```
     assert Struct("finished", code=37) in logs.debug
     assert Struct("finished", code=3) not in logs.debug
+```
+
+If you sill have classic TestCases but introduced `structlog`, you can do *(new in v8.6)*:
+
+```
+    self.assertLogged("finished", code=37)
+    self.assertLoggedLEVEL("finished", result="success")
 ```
 
 
