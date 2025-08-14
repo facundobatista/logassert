@@ -1,4 +1,4 @@
-# Copyright 2015 Facundo Batista
+# Copyright 2015-2025 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -18,6 +18,8 @@
 
 import logging
 import unittest
+
+import structlog
 
 import logassert
 
@@ -220,3 +222,64 @@ class NotLoggedTestCase(unittest.TestCase):
         logger.info("test")
         ftc.assertNotLoggedError("test")
         self.assertEqual(ftc.failed, None)
+
+
+class StructlogTestCase(unittest.TestCase):
+    """Support for structlog."""
+
+    def setUp(self):
+        self.logger = structlog.get_logger()
+
+    def test_simple_assert_ok(self):
+        ftc = FakeTestCase()
+        logassert.setup(ftc, '')
+        self.logger.debug("test")
+        ftc.assertLogged("test")
+        self.assertEqual(ftc.failed, None)
+
+    def test_simple_assert_ok_with_parameters(self):
+        ftc = FakeTestCase()
+        logassert.setup(ftc, '')
+        self.logger.debug("test", foo=65, bar='foobar')
+        ftc.assertLogged("test", foo=65, bar="foobar")
+        self.assertEqual(ftc.failed, None)
+
+    def test_simple_assert_fail(self):
+        ftc = FakeTestCase()
+        logassert.setup(ftc, '')
+        self.logger.debug("test")
+        ftc.assertLogged("test", foo=3)
+        self.assertEqual(
+            ftc.failed,
+            "Tokens ('test', foo=3) not found, all was logged is...\n"
+            "    DEBUG     'test'"
+        )
+
+    def test_simple_assert_fail_with_parameters(self):
+        ftc = FakeTestCase()
+        logassert.setup(ftc, '')
+        self.logger.debug("test", foo=65, bar='foobar')
+        ftc.assertLogged("test", foo="65", bar="foobar")
+        self.assertEqual(
+            ftc.failed,
+            "Tokens ('test', foo='65', bar='foobar') not found, all was logged is...\n"
+            "    DEBUG     'test' {'foo': 65, 'bar': 'foobar'}"
+        )
+
+    def test_leveled_assert_ok_with_parameters(self):
+        ftc = FakeTestCase()
+        logassert.setup(ftc, '')
+        self.logger.debug("test", foo=65, bar='foobar')
+        ftc.assertLoggedDebug("test", foo=65, bar="foobar")
+        self.assertEqual(ftc.failed, None)
+
+    def test_leveled_assert_fail_with_parameters(self):
+        ftc = FakeTestCase()
+        logassert.setup(ftc, '')
+        self.logger.debug("test", foo=65, bar='foobar')
+        ftc.assertLoggedDebug("test", foo="65", bar="foobar")
+        self.assertEqual(
+            ftc.failed,
+            "Tokens ('test', foo='65', bar='foobar') not found in DEBUG, all was logged is...\n"
+            "    DEBUG     'test' {'foo': 65, 'bar': 'foobar'}"
+        )
