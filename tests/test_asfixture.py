@@ -51,6 +51,30 @@ def test_reset(logs):
     assert "foobar" not in logs.debug
 
 
+@pytest.mark.parametrize(
+    "method_name, level_name",
+    [
+        ("debug", "debug"),
+        ("info", "info"),
+        ("warning", "warning"),
+        ("error", "error"),
+        ("critical", "critical"),
+        ("exception", "error"),
+    ]
+)
+def test_basic_levels(method_name, level_name, logs):
+    method = getattr(logger, method_name)
+    if method_name == "exception":
+        try:
+            boom
+        except NameError:
+            method("test")
+    else:
+        method("test")
+    level = getattr(logs, level_name)
+    assert "test" in level
+
+
 # -- messages
 
 def test_failure_message_simple(logs):
