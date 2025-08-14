@@ -272,6 +272,53 @@ def test_completestruct_coverage_exceeded(logs):
     assert CompleteStruct("test", foo="ok", extra="") not in logs.any_level
 
 
+# -- using the BoundLogger
+
+def test_boundlogger_debug(logs):
+    structlog.configure(wrapper_class=structlog.stdlib.BoundLogger)
+    logger = structlog.get_logger()
+    logger.debug("test")
+    assert "test" in logs.debug
+
+
+def test_boundlogger_info(logs):
+    structlog.configure(wrapper_class=structlog.stdlib.BoundLogger)
+    logger = structlog.get_logger()
+    logger.info("test")
+    assert "test" in logs.info
+
+
+def test_boundlogger_error(logs):
+    structlog.configure(wrapper_class=structlog.stdlib.BoundLogger)
+    logger = structlog.get_logger()
+    logger.error("test")
+    assert "test" in logs.error
+
+
+def test_boundlogger_warning(logs):
+    structlog.configure(wrapper_class=structlog.stdlib.BoundLogger)
+    logger = structlog.get_logger()
+    logger.warning("test")
+    assert "test" in logs.warning
+
+
+def test_boundlogger_critical(logs):
+    structlog.configure(wrapper_class=structlog.stdlib.BoundLogger)
+    logger = structlog.get_logger()
+    logger.critical("test")
+    assert "test" in logs.critical
+
+
+def test_boundlogger_exception(logs):
+    structlog.configure(wrapper_class=structlog.stdlib.BoundLogger)
+    logger = structlog.get_logger()
+    try:
+        boom
+    except NameError:
+        logger.exception("test")
+    assert "test" in logs.error
+
+
 # -- integration tests
 
 

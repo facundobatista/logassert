@@ -28,6 +28,16 @@ except ImportError:
 
 MISSING_MARK = object()
 
+# conversion between the method used to log and the level it logs
+METHOD_TO_LEVEL_CONVERSION = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+    "exception": logging.ERROR,
+}
+
 
 class SimpleRecord:
     """A record with simply level name and number, and just a string message."""
@@ -136,7 +146,7 @@ class _StructlogCapturer:
 
     def _capture(self, logger, levelname, event_dict):
         """Capture the info from structlog."""
-        levelno = getattr(logging, levelname.upper())
+        levelno = METHOD_TO_LEVEL_CONVERSION[levelname]
         r = StructRecord(levelno=levelno, levelname=levelname, event_dict=event_dict)
         self.records.append(r)
         return event_dict
@@ -161,11 +171,14 @@ class SetupLogChecker:
         # fix TestCase instance with all classic-looking helpers
         self.test_instance = test_instance
         test_instance.assertLogged = functools.partial(self._check_pos, None)
+        test_instance.assertLoggedCritical = functools.partial(self._check_pos, logging.CRITICAL)
         test_instance.assertLoggedError = functools.partial(self._check_pos, logging.ERROR)
         test_instance.assertLoggedWarning = functools.partial(self._check_pos, logging.WARNING)
         test_instance.assertLoggedInfo = functools.partial(self._check_pos, logging.INFO)
         test_instance.assertLoggedDebug = functools.partial(self._check_pos, logging.DEBUG)
         test_instance.assertNotLogged = functools.partial(self._check_neg, None)
+        test_instance.assertNotLoggedCritical = functools.partial(
+            self._check_neg, logging.CRITICAL)
         test_instance.assertNotLoggedError = functools.partial(self._check_neg, logging.ERROR)
         test_instance.assertNotLoggedWarning = functools.partial(self._check_neg, logging.WARNING)
         test_instance.assertNotLoggedInfo = functools.partial(self._check_neg, logging.INFO)
@@ -476,12 +489,8 @@ class FixtureLogChecker:
 
     # translation between the attributes and logging levels
     _levels = {
-        'any_level': None,
-        'debug': logging.DEBUG,
-        'info': logging.INFO,
-        'warning': logging.WARNING,
-        'error': logging.ERROR,
-    }
+        "any_level": None,
+    } | METHOD_TO_LEVEL_CONVERSION
 
     def __init__(self):
         self.handlers = [_StdlibStoringHandler('')]

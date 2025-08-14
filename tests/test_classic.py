@@ -223,6 +223,14 @@ class NotLoggedTestCase(unittest.TestCase):
         ftc.assertNotLoggedError("test")
         self.assertEqual(ftc.failed, None)
 
+    def test_level_critical(self):
+        ftc = FakeTestCase()
+        logger = logging.getLogger()
+        logassert.setup(ftc, '')
+        logger.info("test")
+        ftc.assertNotLoggedCritical("test")
+        self.assertEqual(ftc.failed, None)
+
 
 class StructlogTestCase(unittest.TestCase):
     """Support for structlog."""
