@@ -1,4 +1,4 @@
-# Copyright 2015-2024 Facundo Batista
+# Copyright 2015-2026 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -14,4 +14,14 @@
 #
 # For further info, check  https://github.com/facundobatista/logassert
 
-from .logassert import setup, Exact, Regex, Multiple, Sequence, NOTHING, Struct, CompleteStruct # NOQA (imported but not used)
+from .logassert import (  # NOQA (imported but not used)
+    CompleteStruct,
+    Exact,
+    Multiple,
+    NOTHING,
+    Regex,
+    Sequence,
+    Struct,
+    install_custom_level,
+    setup,
+)

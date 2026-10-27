@@ -65,6 +65,7 @@ The report you get as it failed:
 
 After [installing](#how-to-install), the same functionality is exposed in two very different ways, one that fits better the *pytest semantics*, the other one more suitable for *classic unit tests*.
 
+
 ## For pytest
 
 All you need to do is to declare `logs` in your test arguments, it works
@@ -252,6 +253,33 @@ def test_welcoming message(logs):
     logs.reset()
     custom_logger.info("foo")  # second log! it should NOT trigger the welcoming message
     assert "Welcome" not in logs.info
+```
+
+### What about custom log levels?
+
+If you have log levels in your system that fall outside the standard ones you need to let
+`logassert` know about them.
+
+Let's say for example that you are logging in a level 5 that you call "trace":
+
+```
+    value = "123"
+    logger.log(5, "Received value is %r", value)
+```
+
+Before the actual test runs, once, you need to install that custom log level in `logassert`.
+For that, include a line like the following in your test file or a central place
+(e.g. `conftest.py`), passing the custom level's name and value:
+
+```
+import logassert
+
+logassert.install_custom_level("trace", 5)
+```
+
+Then you will be able to use that custom level in your tests:
+```
+    assert "Received value is 123" in logs.trace
 ```
 
 
