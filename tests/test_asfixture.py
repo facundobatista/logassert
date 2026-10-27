@@ -504,3 +504,67 @@ def test_struct(logs, struct_class):
     logger.error("foo")
     assert struct_class("fo.") in logs.error
     assert struct_class("foo", bar=2) not in logs.error
+
+
+# --- custom levels
+
+def test_installcustom_nothing(integtest_runner):
+    """How it would behave if nothing is custom installed."""
+    result = integtest_runner(
+        """
+        import logging
+
+        import pytest
+
+        TRACE = 5
+
+        logger = logging.getLogger()
+
+
+        def test_simple(logs):
+            logger.debug('test-debug')
+            logger.log(TRACE, 'test-trace')
+
+            assert "test-debug" in logs.debug
+            assert "test-trace" not in logs.debug
+
+            # these checks cannot even be done
+            with pytest.raises(AttributeError):
+                assert "test-debug" not in logs.trace
+            with pytest.raises(AttributeError):
+                assert "test-trace" in logs.trace
+    """
+    )
+    # check that the test passed
+    result.assert_outcomes(passed=1)
+
+
+def test_installcustom_new_level(integtest_runner):
+    """After installing we can use a new level."""
+    result = integtest_runner(
+        """
+        import logging
+
+        import logassert
+
+        TRACE = 5
+
+        logger = logging.getLogger()
+
+        def test_simple(logs):
+            logger.debug('test-debug')
+            logger.log(TRACE, 'test-trace')
+
+            logassert.install_custom_level("trace", TRACE)
+
+            assert "test-debug" in logs.debug
+            assert "test-trace" not in logs.debug
+
+            # behave as expected
+            assert "test-debug" not in logs.trace
+            assert "test-trace" in logs.trace
+
+    """
+    )
+    # check that the test passed
+    result.assert_outcomes(passed=1)

@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Facundo Batista
+# Copyright 2015-2026 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -29,7 +29,8 @@ except ImportError:
 MISSING_MARK = object()
 
 # conversion between the method used to log and the level it logs
-METHOD_TO_LEVEL_CONVERSION = {
+_METHOD_TO_LEVEL_CONVERSION = {
+    "any_level": None,
     "debug": logging.DEBUG,
     "info": logging.INFO,
     "warning": logging.WARNING,
@@ -91,7 +92,7 @@ class _StdlibStoringHandler(logging.handlers.MemoryHandler):
         # hook in the logger and set level
         self.logger = logger = logging.getLogger(log_path)
         self.original_logger_level = logger.level
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(0)  # capture all
 
         # ensure there are not other _StoringHandlers
         logger.handlers[:] = [
@@ -99,7 +100,7 @@ class _StdlibStoringHandler(logging.handlers.MemoryHandler):
         ]
 
         logger.addHandler(self)
-        self.setLevel(logging.DEBUG)
+        self.setLevel(0)  # capture all
 
         # hold a kind of record with the message already composed
         self.records = []
@@ -146,7 +147,7 @@ class _StructlogCapturer:
 
     def _capture(self, logger, levelname, event_dict):
         """Capture the info from structlog."""
-        levelno = METHOD_TO_LEVEL_CONVERSION[levelname]
+        levelno = _METHOD_TO_LEVEL_CONVERSION[levelname]
         r = StructRecord(levelno=levelno, levelname=levelname, event_dict=event_dict)
         self.records.append(r)
         return event_dict
@@ -487,11 +488,6 @@ class PyTestComparer:
 class FixtureLogChecker:
     """A version of the LogChecker to use as a pytest fixture."""
 
-    # translation between the attributes and logging levels
-    _levels = {
-        "any_level": None,
-    } | METHOD_TO_LEVEL_CONVERSION
-
     def __init__(self):
         self.handlers = [_StdlibStoringHandler('')]
         if structlog is not None:
@@ -514,9 +510,8 @@ class FixtureLogChecker:
 
         # this is handled dinamically so we don't need to create a bunch of PyTestComparares
         # for every test, specially because most of them won't be used in that test
-        _levels = object.__getattribute__(self, '_levels')
         try:
-            level = _levels[name]
+            level = _METHOD_TO_LEVEL_CONVERSION[name]
         except KeyError:
             raise AttributeError("'FixtureLogChecker' object has no attribute {!r}".format(name))
 
@@ -540,3 +535,8 @@ def setup(test_instance, logger_name):
                 self.assertLogged(...)
     """
     return SetupLogChecker(test_instance, logger_name)
+
+
+def install_custom_level(levelname: str, levelno: int):
+    """Install a custom level to do verifications."""
+    _METHOD_TO_LEVEL_CONVERSION[levelname] = levelno
