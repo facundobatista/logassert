@@ -291,3 +291,41 @@ class StructlogTestCase(unittest.TestCase):
             "Tokens ('test', foo='65', bar='foobar') not found in DEBUG, all was logged is...\n"
             "    DEBUG     'test' {'foo': 65, 'bar': 'foobar'}"
         )
+
+
+def test_capture_all_in_logger_hierarchy(integtest_runner):
+    """The "capture all" level works inside a logger hierarchy, not only in the root logger.
+
+    This uses an integration test (a separate process with a pristine logging setup)
+    because the bug depends on the loggers' levels inheritance: a monitored logger
+    with level 0 (NOTSET) doesn't capture everything, it just inherits the level
+    from its ancestors (ending up in the root's WARNING), losing the DEBUG records.
+    """
+    result = integtest_runner(
+        """
+        import logging
+        import unittest
+
+        import logassert
+
+        # the hierarchy: what the application configures, what a module gets from
+        # getLogger(__name__), and a deeper module inside that one
+        parent = logging.getLogger('myapp')
+        child = logging.getLogger('myapp.helpers')
+        grandchild = logging.getLogger('myapp.helpers.deep')
+
+        class MyTestCase(unittest.TestCase):
+            def setUp(self):
+                logassert.setup(self, 'myapp.helpers')
+
+            def test_from_the_monitored_logger(self):
+                child.debug('test')
+                self.assertLoggedDebug('test')
+
+            def test_from_a_deeper_logger(self):
+                grandchild.debug('test')
+                self.assertLoggedDebug('test')
+        """
+    )
+    # check that both tests passed
+    result.assert_outcomes(passed=2)
