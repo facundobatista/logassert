@@ -1,4 +1,4 @@
-# Copyright 2024 Facundo Batista
+# Copyright 2024-2026 Facundo Batista
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser  General Public License version 3, as
@@ -38,8 +38,9 @@ def integtest_runner(testdir, pytestconfig):
         # create a temporary pytest test file
         testdir.makepyfile(real_test_code)
 
-        # run the test with pytest
-        result = testdir.runpytest()
+        # run the test with pytest, in a subprocess so the logging state of this
+        # process (levels, handlers, structlog config.) doesn't pollute it
+        result = testdir.runpytest_subprocess()
 
         return result
 

@@ -92,7 +92,7 @@ class _StdlibStoringHandler(logging.handlers.MemoryHandler):
         # hook in the logger and set level
         self.logger = logger = logging.getLogger(log_path)
         self.original_logger_level = logger.level
-        logger.setLevel(0)  # capture all
+        logger.setLevel(1)  # capture all
 
         # ensure there are not other _StoringHandlers
         logger.handlers[:] = [
@@ -100,7 +100,7 @@ class _StdlibStoringHandler(logging.handlers.MemoryHandler):
         ]
 
         logger.addHandler(self)
-        self.setLevel(0)  # capture all
+        self.setLevel(1)  # capture all
 
         # hold a kind of record with the message already composed
         self.records = []
